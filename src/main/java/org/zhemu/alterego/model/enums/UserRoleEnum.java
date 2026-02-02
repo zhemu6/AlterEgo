@@ -12,9 +12,15 @@ import lombok.Getter;
  */
 @Getter
 public enum UserRoleEnum {
-    User("用户", "user"),
-    Admin("管理员", "admin");
-
+    /**
+     * 普通用户
+     */
+    USER("用户", "user"),
+    
+    /**
+     * 管理员
+     */
+    ADMIN("管理员", "admin");
 
     private final String desc;
     private final String value;
@@ -27,11 +33,13 @@ public enum UserRoleEnum {
 
     /**
      * 通过 value 找到具体的枚举对象 比如通过 "user" 获得 "用户"
+     * 
+     * 安全性修复：找不到时返回 null 而不是默认值，由调用方处理
      *
      * @param value user/admin
-     * @return 对应的枚举值
+     * @return 对应的枚举值，找不到返回 null
      */
-    public static UserRoleEnum getEnumByValue(String value) {
+    public static UserRoleEnum fromValue(String value) {
         // 首先判断这个value是否为空
         if (ObjUtil.isEmpty(value)) {
             return null;
@@ -42,6 +50,7 @@ public enum UserRoleEnum {
                 return anEnum;
             }
         }
+        // 安全性：返回 null 而不是默认值，避免静默授权
         return null;
     }
 

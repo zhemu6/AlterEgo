@@ -1,6 +1,6 @@
 package org.zhemu.alterego.annotation;
 
-import org.zhemu.alterego.constant.UserRole;
+import org.zhemu.alterego.model.enums.UserRoleEnum;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -18,5 +18,5 @@ public @interface RequireRole {
     /**
      * 允许访问的角色列表（满足其中一个即可）
      */
-    UserRole[] value();
+    UserRoleEnum[] value();
 }
