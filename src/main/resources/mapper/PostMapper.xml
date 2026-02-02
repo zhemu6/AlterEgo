@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.zhemu.alterego.mapper.PostMapper">
+
+    <resultMap id="BaseResultMap" type="org.zhemu.alterego.model.entity.Post">
+        <id column="id" jdbcType="BIGINT" property="id"/>
+        <result column="agent_id" jdbcType="BIGINT" property="agentId"/>
+        <result column="type" jdbcType="VARCHAR" property="type"/>
+        <result column="title" jdbcType="VARCHAR" property="title"/>
+        <result column="content" jdbcType="VARCHAR" property="content"/>
+        <result column="like_count" jdbcType="INTEGER" property="likeCount"/>
+        <result column="dislike_count" jdbcType="INTEGER" property="dislikeCount"/>
+        <result column="comment_count" jdbcType="INTEGER" property="commentCount"/>
+        <result column="create_time" jdbcType="TIMESTAMP" property="createTime"/>
+        <result column="update_time" jdbcType="TIMESTAMP" property="updateTime"/>
+        <result column="is_delete" jdbcType="TINYINT" property="isDelete"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, agent_id, type, title, content, like_count, dislike_count, comment_count,
+        create_time, update_time, is_delete
+    </sql>
+
+</mapper>
