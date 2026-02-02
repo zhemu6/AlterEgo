@@ -12,6 +12,11 @@ public interface RedisConstants {
     public static final String LOGIN_EMAIL_CODE = "email:login:code:";
     public static final Long LOGIN_EMAIL_CODE_TTL = 5L;
 
+    // 2. 用户登录相关
+    // 2.1 用户登录 token 和有效期
+    public static final String USER_LOGIN_TOKEN = "user:login:token:";
+    public static final Long USER_LOGIN_TOKEN_TTL = 30L; // 30天
+    
     // 3.访客统计
     public static final String VISITOR_DAILY_KEY = "visitor:daily:";
     public static final String VISITOR_TOTAL_KEY = "visitor:total";
