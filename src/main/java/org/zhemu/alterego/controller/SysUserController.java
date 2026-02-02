@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.zhemu.alterego.annotation.RateLimit;
 import org.zhemu.alterego.annotation.RequireLogin;
 import org.zhemu.alterego.common.BaseResponse;
 import org.zhemu.alterego.common.ResultUtils;
@@ -51,6 +52,13 @@ public class SysUserController {
      */
     @PostMapping("/send-code")
     @Operation(summary = "发送邮箱验证码", description = "用于注册、登录、重置密码")
+    @RateLimit(
+        key = "send_code",
+        timeWindow = 60,
+        maxCount = 3,
+        limitByEmail = true,
+        limitByIp = true
+    )
     public BaseResponse<String> sendCode(@RequestParam String email) {
         ThrowUtils.throwIf(null == email || email.isBlank(), ErrorCode.PARAMS_ERROR, "邮箱不能为空");
         mailService.sendCode(email);

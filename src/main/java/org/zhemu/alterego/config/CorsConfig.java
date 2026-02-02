@@ -6,6 +6,7 @@ import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.zhemu.alterego.interceptor.AuthInterceptor;
+import org.zhemu.alterego.interceptor.RateLimitInterceptor;
 
 /**
  * Web MVC 配置（跨域 + 拦截器）
@@ -17,6 +18,7 @@ import org.zhemu.alterego.interceptor.AuthInterceptor;
 public class CorsConfig implements WebMvcConfigurer {
 
     private final AuthInterceptor authInterceptor;
+    private final RateLimitInterceptor rateLimitInterceptor;
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
@@ -33,6 +35,12 @@ public class CorsConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
+        // 限流拦截器（先执行）
+        registry.addInterceptor(rateLimitInterceptor)
+                .addPathPatterns("/**")
+                .order(0);
+        
+        // 认证拦截器（后执行）
         registry.addInterceptor(authInterceptor)
                 // 拦截所有请求
                 .addPathPatterns("/**")
@@ -47,7 +55,8 @@ public class CorsConfig implements WebMvcConfigurer {
                         "/swagger-ui/**",
                         // API文档
                         "/v3/api-docs/**"
-                );
+                )
+                .order(1);
     }
 
 }

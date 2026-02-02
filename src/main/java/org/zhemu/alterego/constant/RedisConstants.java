@@ -21,4 +21,7 @@ public interface RedisConstants {
     public static final String VISITOR_DAILY_KEY = "visitor:daily:";
     public static final String VISITOR_TOTAL_KEY = "visitor:total";
 
+    // 4. 接口限流相关
+    public static final String RATE_LIMIT_PREFIX = "rate_limit:";
+
 }
