@@ -37,11 +37,20 @@ class RateLimitInterceptorTest {
         response = new MockHttpServletResponse();
         
         // 清理测试用的Redis key
+        // 使用 SCAN 代替 KEYS，避免在生产环境中阻塞 Redis
         String pattern = RedisConstants.RATE_LIMIT_PREFIX + "test_*";
-        var keys = stringRedisTemplate.keys(pattern);
-        if (keys != null && !keys.isEmpty()) {
-            stringRedisTemplate.delete(keys);
-        }
+        stringRedisTemplate.execute((org.springframework.data.redis.core.RedisCallback<Void>) connection -> {
+            var cursor = connection.scan(
+                org.springframework.data.redis.core.ScanOptions.scanOptions()
+                    .match(pattern)
+                    .count(100)
+                    .build()
+            );
+            while (cursor.hasNext()) {
+                connection.del(cursor.next());
+            }
+            return null;
+        });
     }
 
     @Test

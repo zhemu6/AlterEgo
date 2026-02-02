@@ -3,6 +3,9 @@ package org.zhemu.alterego.util;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+
 /**
  * IP地址工具类
  * 
@@ -17,10 +20,6 @@ import lombok.extern.slf4j.Slf4j;
 public class IpUtils {
     
     private static final String UNKNOWN = "unknown";
-    private static final String IPV4_PATTERN = 
-        "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$";
-    private static final String IPV6_PATTERN = 
-        "^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^::1$|^::$|^([0-9a-fA-F]{1,4}:){0,6}::([0-9a-fA-F]{1,4}:){0,6}[0-9a-fA-F]{1,4}$";
     
     /**
      * 获取客户端真实IP地址
@@ -81,13 +80,20 @@ public class IpUtils {
     
     /**
      * 验证IP地址格式是否有效（支持IPv4和IPv6）
-     * 基本的格式验证，防止明显的伪造IP
+     * 使用 InetAddress 进行验证，比正则表达式更可靠
      */
     private static boolean isValidIp(String ip) {
         if (ip == null || ip.isEmpty() || UNKNOWN.equalsIgnoreCase(ip)) {
             return false;
         }
-        // IPv4 或 IPv6 格式验证
-        return ip.matches(IPV4_PATTERN) || ip.matches(IPV6_PATTERN);
+        
+        try {
+            // 使用 InetAddress 验证，支持所有 IPv4 和 IPv6 格式
+            InetAddress.getByName(ip);
+            return true;
+        } catch (UnknownHostException e) {
+            log.debug("Invalid IP address format: {}", ip);
+            return false;
+        }
     }
 }

@@ -15,7 +15,7 @@ import org.zhemu.alterego.exception.BusinessException;
 import org.zhemu.alterego.exception.ErrorCode;
 import org.zhemu.alterego.util.IpUtils;
 
-import java.util.concurrent.TimeUnit;
+import java.nio.charset.StandardCharsets;
 
 /**
  * 接口限流拦截器
@@ -121,12 +121,12 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         Long count = stringRedisTemplate.execute(
             (org.springframework.data.redis.core.RedisCallback<Long>) connection -> {
                 return connection.stringCommands().eval(
-                    RATE_LIMIT_LUA_SCRIPT.getBytes(),
+                    RATE_LIMIT_LUA_SCRIPT.getBytes(StandardCharsets.UTF_8),
                     org.springframework.data.redis.connection.ReturnType.INTEGER,
                     1,
-                    key.getBytes(),
-                    String.valueOf(rateLimit.timeWindow()).getBytes(),
-                    String.valueOf(rateLimit.maxCount()).getBytes()
+                    key.getBytes(StandardCharsets.UTF_8),
+                    String.valueOf(rateLimit.timeWindow()).getBytes(StandardCharsets.UTF_8),
+                    String.valueOf(rateLimit.maxCount()).getBytes(StandardCharsets.UTF_8)
                 );
             }
         );
