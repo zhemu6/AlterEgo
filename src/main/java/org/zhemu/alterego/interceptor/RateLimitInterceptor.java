@@ -131,7 +131,14 @@ public class RateLimitInterceptor implements HandlerInterceptor {
             }
         );
         
-        if (count == null || count == -1) {
+        if (count == null) {
+            // Redis 执行失败，记录错误但不阻塞请求（fail-open 策略）
+            log.error("Redis执行失败，限流检查跳过: key={}, identifier={}", key, identifier);
+            return;
+        }
+        
+        if (count == -1) {
+            // 达到限流阈值
             log.warn("请求频率超限: key={}, identifier={}, maxCount={}", 
                      key, identifier, rateLimit.maxCount());
             throw new BusinessException(ErrorCode.TOO_MANY_REQUEST, 

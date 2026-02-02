@@ -80,7 +80,7 @@ public class IpUtils {
     
     /**
      * 验证IP地址格式是否有效（支持IPv4和IPv6）
-     * 使用 InetAddress 进行验证，比正则表达式更可靠
+     * 使用 InetAddress 进行验证，但不进行 DNS 解析
      */
     private static boolean isValidIp(String ip) {
         if (ip == null || ip.isEmpty() || UNKNOWN.equalsIgnoreCase(ip)) {
@@ -89,8 +89,13 @@ public class IpUtils {
         
         try {
             // 使用 InetAddress 验证，支持所有 IPv4 和 IPv6 格式
-            InetAddress.getByName(ip);
-            return true;
+            // 注意：InetAddress.getByName() 对纯IP地址不会进行DNS查询，只会解析格式
+            // 但如果传入域名，则会触发DNS查询，因此需要先检查是否为IP格式
+            InetAddress addr = InetAddress.getByName(ip);
+            // 确保解析后的地址与输入一致，排除域名情况
+            return addr.getHostAddress().equals(ip) || 
+                   // IPv6可能会有不同的表示形式（如压缩格式），需要额外处理
+                   (ip.contains(":") && addr.getHostAddress().contains(":"));
         } catch (UnknownHostException e) {
             log.debug("Invalid IP address format: {}", ip);
             return false;

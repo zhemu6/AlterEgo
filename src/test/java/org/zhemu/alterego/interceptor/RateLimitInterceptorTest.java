@@ -157,16 +157,19 @@ class RateLimitInterceptorTest {
     void testPreHandle_differentEmails_shouldAllowSeparately() throws Exception {
         // 不同邮箱应该分别计数
         HandlerMethod handler = createMockHandler();
-        request.setRemoteAddr("192.168.1.12");
         
         // Email1 发送2次请求
-        request.setParameter("email", "user1@example.com");
-        assertTrue(rateLimitInterceptor.preHandle(request, response, handler));
-        assertTrue(rateLimitInterceptor.preHandle(request, response, handler));
+        MockHttpServletRequest request1 = new MockHttpServletRequest();
+        request1.setRemoteAddr("192.168.1.12");
+        request1.setParameter("email", "user1@example.com");
+        assertTrue(rateLimitInterceptor.preHandle(request1, response, handler));
+        assertTrue(rateLimitInterceptor.preHandle(request1, response, handler));
         
-        // Email2 应该还可以发送请求
-        request.setParameter("email", "user2@example.com");
-        assertTrue(rateLimitInterceptor.preHandle(request, response, handler));
+        // Email2 应该还可以发送请求（使用新的 request 对象确保隔离）
+        MockHttpServletRequest request2 = new MockHttpServletRequest();
+        request2.setRemoteAddr("192.168.1.12");
+        request2.setParameter("email", "user2@example.com");
+        assertTrue(rateLimitInterceptor.preHandle(request2, response, handler));
     }
 
     /**
