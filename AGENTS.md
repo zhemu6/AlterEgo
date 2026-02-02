@@ -1,545 +1,148 @@
-# AlterEgo Backend - Agent Development Guide
+# AlterEgo backend — AGENTS.md (for coding agents)
 
-## Project Overview
-- **Project**: AlterEgo (异我) - AI Agent Digital Pet Social Platform
-- **Tech Stack**: Java 21, Spring Boot 3.5.10, MyBatis-Plus, Redis, MySQL
-- **Base Package**: `org.zhemu.alterego`
-- **Context Path**: `/api`
-- **Port**: 8124
+> 目标：让代理在本仓库里能“按现状写对代码”。本项目是 Java 21 + Spring Boot 3.5.10 + MyBatis-Plus + Redis + MySQL。
 
----
+## 0) Repo facts / 约束
+- Base package: `org.zhemu.alterego`
+- Context path: `/api`（见 `src/main/resources/application.yml`）
+- Port: `8124`
+- JSON：`Long` 序列化为 `String`（见 `config/JsonConfig.java`）
+- MyBatis-Plus：开启 `map-underscore-to-camel-case`，逻辑删除字段 `isDelete`（见 `application.yml`）
 
-## Build, Test & Run Commands
+## 1) Commands（优先用 Maven Wrapper）
 
-### Build & Run
+### Build / Run
 ```bash
-# Clean and build
 ./mvnw clean package
+./mvnw clean package -DskipTests
 
-# Run application (development profile)
 ./mvnw spring-boot:run
-
-# Run with specific profile
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=prod
-
-# Build without tests
-./mvnw clean package -DskipTests
 ```
 
-### Testing
+### Test
 ```bash
-# Run all tests
+# 全量测试
 ./mvnw test
 
-# Run a single test class
+# 只跑一个测试类（Surefire）
 ./mvnw test -Dtest=BackendApplicationTests
 
-# Run a specific test method
+# 只跑单个测试方法
 ./mvnw test -Dtest=BackendApplicationTests#contextLoads
 
-# Run tests with coverage
-./mvnw clean test jacoco:report
+# 只跑某个包/命名模式（可选）
+./mvnw test -Dtest=*Service*Test
 
-# Skip tests during build
-./mvnw clean install -DskipTests
-```
-
-### Code Quality
-```bash
-# Compile (includes Lombok annotation processing)
-./mvnw compile
-
-# Verify build
+# 常用验证（比 package 更“严格”）
 ./mvnw verify
 ```
 
----
+### Lint / Format
+- 仓库当前 `pom.xml` 未配置 Checkstyle/Spotless/PMD 等“强制格式化”插件。
+- 结论：以 IDE（IntelliJ）默认 Java 格式化 + 本文风格约定为准；提交前至少确保 `./mvnw test` 通过。
 
-## Project Structure
-
+## 2) Code structure（常见目录）
 ```
-src/
-├── main/
-│   ├── java/org/zhemu/alterego/
-│   │   ├── BackendApplication.java         # Main application entry
-│   │   ├── config/                         # Configuration classes
-│   │   │   ├── CorsConfig.java            # CORS & Interceptor config
-│   │   │   └── JsonConfig.java            # JSON serialization config
-│   │   ├── controller/                     # REST Controllers (create here)
-│   │   ├── service/                        # Business logic services (create here)
-│   │   ├── mapper/                         # MyBatis-Plus mappers (create here)
-│   │   ├── entity/                         # Database entities (create here)
-│   │   ├── dto/                           # Data Transfer Objects (create here)
-│   │   ├── common/                        # Common utilities/constants (create here)
-│   │   ├── exception/                     # Custom exceptions (create here)
-│   │   └── aop/                           # AOP interceptors (create here)
-│   └── resources/
-│       ├── application.yml                 # Main config
-│       ├── application-dev.yml            # Dev environment config
-│       └── application-prod.yml           # Production config
-└── test/
-    └── java/org/zhemu/alterego/           # Test classes
+src/main/java/org/zhemu/alterego/
+  controller/  service/  service/impl/  mapper/
+  model/{dto,entity,enums,vo}/
+  config/  interceptor/  annotation/  exception/  common/  util/  mq/
+src/test/java/org/zhemu/alterego/
 ```
 
----
+## 3) Coding conventions（照现有代码写）
 
-## Code Style Guidelines
+### 3.1 Imports
+- 不强制“分组 + 空行”，但建议：Java 标准库 / 三方库 / 项目内 3 组。
+- 避免通配符导入（`import xxx.*`），测试断言除外。
 
-### Package Naming
-- Use lowercase: `org.zhemu.alterego.controller`
-- Follow domain structure: `controller`, `service`, `mapper`, `entity`, `dto`, `config`, `exception`, `common`, `aop`
+### 3.2 Formatting
+- 4 空格缩进，`{` 不换行（Spring/Java 常规风格）。
+- 行宽不硬限制，但日志/链式调用尽量可读。
 
-### Class Naming
-- Controllers: `*Controller` (e.g., `UserController`, `PostController`)
-- Services: `*Service` (e.g., `UserService`, `PostService`)
-- Service Implementations: `*ServiceImpl` (e.g., `UserServiceImpl`)
-- Mappers: `*Mapper` (e.g., `UserMapper`, `PostMapper`)
-- Entities: Plain names (e.g., `User`, `Post`, `Agent`)
-- DTOs: `*Request`, `*Response`, `*DTO` (e.g., `CreateAgentRequest`, `PostResponse`)
-- Exceptions: `*Exception` (e.g., `BusinessException`, `NotFoundException`)
-- Config: `*Config` (e.g., `CorsConfig`, `RedisConfig`)
+### 3.3 Naming
+- Package：全小写（`org.zhemu.alterego...`）
+- Controller：`*Controller`
+- Service 接口：`*Service`；实现：`*ServiceImpl`
+- Mapper：`*Mapper`（MyBatis-Plus `BaseMapper`）
+- DTO：`*Request` / `*Response`
+- VO：`*VO`
+- Enum：`*Enum`，值用 `String/Integer` 与 DB/JSON 对齐
 
-### Import Organization
-```java
-// 1. Java standard library
-import java.util.List;
-import java.time.LocalDateTime;
+### 3.4 Types / nullability
+- ID 使用 `Long`（允许为空；且会序列化为字符串）。
+- 时间使用 `java.time.LocalDateTime`。
+- 比较包装类型时用 `Objects.equals(a, b)`，避免 NPE/装箱陷阱。
 
-// 2. Third-party libraries (Spring, MyBatis, etc.)
-import org.springframework.stereotype.Service;
-import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+### 3.4.1 DTO/VO 与序列化
+- 外部入参：优先 DTO（`model/dto/**`），不要直接用 Entity 接收。
+- 外部出参：优先 VO（`model/vo/**`），不要把敏感字段（如 `userPassword`）暴露给前端。
+- `Long` 在 JSON 中会序列化成 `String`（`config/JsonConfig.java`）；前端字段类型要按字符串处理。
 
-// 3. Project internal imports
-import org.zhemu.alterego.entity.User;
-import org.zhemu.alterego.mapper.UserMapper;
+### 3.5 Dependency injection
+- 统一使用构造器注入：`@RequiredArgsConstructor` + `final` 字段。
+- 禁止/避免字段注入 `@Autowired`（除非历史代码无法改）。
 
-// 4. Static imports (if any)
-import static org.junit.jupiter.api.Assertions.*;
-```
+### 3.6 Controllers
+- 返回统一响应包装：`BaseResponse<T>` + `ResultUtils.success/error`。
+- 参数校验：优先使用 `jakarta.validation` 注解（如 `@NotBlank`, `@Email`）配合 `@Validated`。
+- 不在 Controller 里写复杂业务；把逻辑放到 Service。
 
-### Annotation Order
-```java
-// Class annotations
-@RestController          // Spring stereotype
-@RequestMapping("/api")  // Mapping
-@RequiredArgsConstructor // Lombok
-@Slf4j                  // Lombok logging
-public class UserController {
-    
-    // Field annotations
-    private final UserService userService;
-    
-    // Method annotations
-    @GetMapping("/{id}")  // HTTP method mapping
-    @ApiOperation("...")  // API documentation (if using Knife4j)
-    public ResponseEntity<User> getUser(@PathVariable Long id) {
-        // ...
-    }
-}
-```
+### 3.6.1 HTTP 约定
+- API 前缀是 `/api`（由 `server.servlet.context-path` 配置），Controller 上一般只写业务路径（如 `/user/**`）。
+- 鉴权：使用 `Authorization: Bearer <token>`。
 
-### Dependency Injection
-**Use constructor injection with Lombok** (preferred):
-```java
-@Service
-@RequiredArgsConstructor  // Generates constructor for final fields
-@Slf4j
-public class UserService {
-    private final UserMapper userMapper;
-    private final RedisTemplate<String, Object> redisTemplate;
-    
-    // Constructor automatically generated by Lombok
-}
-```
+### 3.7 Error handling（按现有体系）
+- 业务错误：抛 `BusinessException`（携带 `ErrorCode`）。
+- 快捷抛错：用 `ThrowUtils.throwIf(condition, errorCode, message)`。
+- 全局异常处理：`exception/GlobalExceptionHandler` 已接管，并对 SSE（`text/event-stream` 或特定 URI）做特殊输出。
+- 新增错误码：在 `exception/ErrorCode` 增加枚举值（例如已有 `TOO_MANY_REQUEST(42900, ...)`）。
 
-**Alternative (without Lombok)**:
-```java
-@Service
-public class UserService {
-    private final UserMapper userMapper;
-    
-    public UserService(UserMapper userMapper) {
-        this.userMapper = userMapper;
-    }
-}
-```
+### 3.7.1 参数校验异常
+- Bean Validation 失败会触发 `MethodArgumentNotValidException`，由 `GlobalExceptionHandler` 统一转为 `PARAMS_ERROR`。
+- DTO 上的 `message` 会作为返回提示；保持提示简洁、面向用户。
 
-**Avoid field injection**:
-```java
-// ❌ DON'T DO THIS
-@Autowired
-private UserMapper userMapper;
-```
+### 3.8 Logging
+- 用 Lombok `@Slf4j`；使用参数化日志：`log.info("x: {}", x)`。
+- 禁止记录敏感信息：密码、验证码、token、密钥。
 
-### Naming Conventions
-- **Classes**: PascalCase (`UserController`, `PostService`)
-- **Methods**: camelCase (`getUserById`, `createPost`)
-- **Variables**: camelCase (`userId`, `userName`)
-- **Constants**: UPPER_SNAKE_CASE (`MAX_RETRY_COUNT`, `DEFAULT_PAGE_SIZE`)
-- **Database tables**: snake_case (`sys_user`, `post_table`)
-- **Database columns**: snake_case (`user_id`, `create_time`)
-- **JSON fields**: camelCase (automatically handled by Jackson)
+### 3.8.1 日志建议
+- 正常业务流程：`info`；可恢复异常/权限不足：`warn`；不可恢复异常：`error` + 堆栈。
+- 避免在高频接口里打过多 `info`，必要时用 `debug`。
 
-### Type Handling
-- Use `Long` for IDs (not `long` - nullable for proper handling)
-- JSON serialization: Long → String (configured in `JsonConfig.java`)
-- Database: `bigint` columns map to `Long` in Java
-- Dates: Use `LocalDateTime` (not `Date` or `Timestamp`)
-- Status codes: Use `enum` types when possible
+### 3.9 MyBatis-Plus
+- Entity：`@TableName` + `@TableLogic isDelete`。
+- 查询：优先 `LambdaQueryWrapper`（类型安全）。
+- Service：多数实现继承 `ServiceImpl<Mapper, Entity>`。
 
-### Lombok Usage
-**Commonly used Lombok annotations**:
-```java
-@Data                    // Generates getters, setters, toString, equals, hashCode
-@NoArgsConstructor       // Generates no-args constructor
-@AllArgsConstructor      // Generates all-args constructor
-@Builder                 // Builder pattern
-@RequiredArgsConstructor // Constructor for final fields
-@Slf4j                   // Logger instance: log.info(), log.error(), etc.
+### 3.9.1 数据层约定
+- 逻辑删除字段统一为 `isDelete`（0 未删 / 1 已删），不要手写物理删除逻辑。
+- 复杂查询优先封装到 Service（或 Mapper 自定义方法），避免 Controller 拼装 SQL。
 
-// Entity example
-@Data
-@TableName("sys_user")  // MyBatis-Plus
-public class User {
-    @TableId(type = IdType.AUTO)
-    private Long id;
-    private String userName;
-    private LocalDateTime createTime;
-    
-    @TableLogic  // MyBatis-Plus logical delete
-    private Integer isDelete;
-}
-```
+### 3.10 Auth / Interceptors（现状提醒）
+- 登录态：`Authorization: Bearer <token>`。
+- Token 映射：Redis `RedisConstants.USER_LOGIN_TOKEN + token -> userId`。
+- 用户信息缓存：Redis `RedisConstants.USER_INFO_CACHE + userId -> SysUser JSON`（密码字段应置空）。
+- 拦截器注册：`config/CorsConfig` 中 `RateLimitInterceptor` order(0) 在前，`AuthInterceptor` order(1)。
 
----
+### 3.10.1 安全细节
+- 不要把“未知/非法角色”当作默认角色；角色解析失败应拒绝访问（见 `UserRoleEnum.fromValue` 的用法）。
+- 任何鉴权/限流相关变更，都要补充/更新测试（`src/test/java/org/zhemu/alterego/**`）。
 
-## MyBatis-Plus Patterns
+## 4) Testing guidelines
+- 测试框架：JUnit 5 + `spring-boot-starter-test`。
+- 优先写“可重复运行”的测试（不要依赖真实外部服务；必要时用 Mockito 或嵌入式/测试替身）。
+- 单测命名：`*Test` 结尾，路径按包结构放到 `src/test/java`。
 
-### Entity Classes
-```java
-package org.zhemu.alterego.entity;
-
-import com.baomidou.mybatisplus.annotation.*;
-import lombok.Data;
-import java.time.LocalDateTime;
-
-@Data
-@TableName("sys_user")  // Database table name
-public class User {
-    @TableId(type = IdType.AUTO)  // Auto-increment ID
-    private Long id;
-    
-    private String userAccount;
-    private String userPassword;
-    private String userName;
-    private String userAvatar;
-    private String userProfile;
-    private String userRole;
-    private Integer userStatus;
-    private String email;
-    
-    @TableField(fill = FieldFill.INSERT)  // Auto-fill on insert
-    private LocalDateTime createTime;
-    
-    @TableField(fill = FieldFill.INSERT_UPDATE)  // Auto-fill on insert/update
-    private LocalDateTime updateTime;
-    
-    @TableLogic  // Logical delete: 0=not deleted, 1=deleted
-    private Integer isDelete;
-}
-```
-
-### Mapper Interfaces
-```java
-package org.zhemu.alterego.mapper;
-
-import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import org.apache.ibatis.annotations.Mapper;
-import org.zhemu.alterego.entity.User;
-
-@Mapper
-public interface UserMapper extends BaseMapper<User> {
-    // BaseMapper provides: selectById, insert, updateById, deleteById, etc.
-    
-    // Add custom queries if needed
-    // User selectByUserAccount(String userAccount);
-}
-```
-
-### Service Layer
-```java
-package org.zhemu.alterego.service;
-
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.zhemu.alterego.entity.User;
-import org.zhemu.alterego.mapper.UserMapper;
-
-@Service
-@RequiredArgsConstructor
-@Slf4j
-public class UserService {
-    private final UserMapper userMapper;
-    
-    public User getUserById(Long id) {
-        log.info("Getting user by id: {}", id);
-        return userMapper.selectById(id);
-    }
-    
-    public User getUserByAccount(String userAccount) {
-        QueryWrapper<User> wrapper = new QueryWrapper<>();
-        wrapper.eq("user_account", userAccount);
-        return userMapper.selectOne(wrapper);
-    }
-    
-    public Long createUser(User user) {
-        log.info("Creating user: {}", user.getUserAccount());
-        userMapper.insert(user);
-        return user.getId();  // ID is set after insert
-    }
-}
-```
-
----
-
-## Controller Patterns
-
-### REST Controller Template
-```java
-package org.zhemu.alterego.controller;
-
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.bind.annotation.*;
-import org.zhemu.alterego.entity.User;
-import org.zhemu.alterego.service.UserService;
-
-@RestController
-@RequestMapping("/user")
-@RequiredArgsConstructor
-@Slf4j
-public class UserController {
-    private final UserService userService;
-    
-    @GetMapping("/{id}")
-    public User getUser(@PathVariable Long id) {
-        log.info("GET /user/{}", id);
-        return userService.getUserById(id);
-    }
-    
-    @PostMapping
-    public Long createUser(@RequestBody User user) {
-        log.info("POST /user: {}", user.getUserAccount());
-        return userService.createUser(user);
-    }
-    
-    @PutMapping("/{id}")
-    public void updateUser(@PathVariable Long id, @RequestBody User user) {
-        log.info("PUT /user/{}", id);
-        user.setId(id);
-        userService.updateUser(user);
-    }
-    
-    @DeleteMapping("/{id}")
-    public void deleteUser(@PathVariable Long id) {
-        log.info("DELETE /user/{}", id);
-        userService.deleteUser(id);
-    }
-}
-```
-
----
-
-## Error Handling
-
-### Custom Business Exception
-```java
-package org.zhemu.alterego.exception;
-
-public class BusinessException extends RuntimeException {
-    private final int code;
-    
-    public BusinessException(int code, String message) {
-        super(message);
-        this.code = code;
-    }
-    
-    public BusinessException(String message) {
-        this(400, message);
-    }
-    
-    public int getCode() {
-        return code;
-    }
-}
-```
-
-### Global Exception Handler (Recommended)
-```java
-package org.zhemu.alterego.config;
-
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.zhemu.alterego.exception.BusinessException;
-
-@RestControllerAdvice
-@Slf4j
-public class GlobalExceptionHandler {
-    
-    @ExceptionHandler(BusinessException.class)
-    public ResponseEntity<?> handleBusinessException(BusinessException e) {
-        log.warn("Business exception: {}", e.getMessage());
-        return ResponseEntity.status(e.getCode()).body(e.getMessage());
-    }
-    
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<?> handleException(Exception e) {
-        log.error("Unexpected exception", e);
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body("Internal server error");
-    }
-}
-```
-
----
-
-## Logging Patterns
-
-### Use SLF4J with Lombok
-```java
-@Service
-@Slf4j  // Creates: private static final Logger log = LoggerFactory.getLogger(...)
-public class MyService {
-    
-    public void doSomething(String param) {
-        log.info("Starting operation with param: {}", param);  // ✅ Parameterized
-        log.debug("Debug details: {}", someDetails);
-        
-        try {
-            // operation
-            log.info("Operation completed successfully");
-        } catch (Exception e) {
-            log.error("Operation failed: {}", e.getMessage(), e);  // ✅ Include exception
-        }
-    }
-}
-```
-
-### Logging Best Practices
-- Use `log.info()` for important business operations
-- Use `log.debug()` for detailed debugging info
-- Use `log.warn()` for recoverable issues
-- Use `log.error()` for exceptions and errors
-- **Always use parameterized logging**: `log.info("User {}", userId)` not `log.info("User " + userId)`
-- **Never log sensitive data**: passwords, tokens, API keys
-- **Include exception object**: `log.error("Message", exception)` not just `exception.getMessage()`
-- **Avoid `System.out.println()`**: use proper logging
-
----
-
-## Testing Guidelines
-
-### Test Class Structure
-```java
-package org.zhemu.alterego;
-
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-import static org.junit.jupiter.api.Assertions.*;
-
-@SpringBootTest  // JUnit 5 + Spring Boot integration test
-class UserServiceTests {
-    
-    @Test
-    void testGetUserById() {
-        // Arrange
-        Long userId = 1L;
-        
-        // Act
-        User user = userService.getUserById(userId);
-        
-        // Assert
-        assertNotNull(user);
-        assertEquals(userId, user.getId());
-    }
-}
-```
-
-### Testing Framework
-- **Framework**: JUnit 5 (Jupiter)
-- **Annotations**: `@Test`, `@SpringBootTest`, `@WebMvcTest`, `@DataJpaTest`
-- **Assertions**: `org.junit.jupiter.api.Assertions.*`
-- **Mocking**: Use Mockito when needed (`@Mock`, `@MockBean`)
-
----
-
-## Configuration Files
-
-### Application Profiles
-- `application.yml`: Main configuration (active profile selection)
-- `application-dev.yml`: Development environment settings
-- `application-prod.yml`: Production environment settings
-
-### Important Settings
-- **Database**: Configure in `application-dev.yml`/`application-prod.yml`
-- **MyBatis-Plus**: 
-  - Camel case mapping: enabled
-  - Logical delete field: `isDelete`
-  - Logical delete values: 0=active, 1=deleted
-- **API Documentation**: Knife4j enabled at `/doc.html`
-
----
-
-## Common Commands Reference
-
+## 4.1 常用本地验证清单（提交前）
 ```bash
-# Development
-./mvnw spring-boot:run                           # Run application
-./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
-
-# Testing
-./mvnw test                                      # Run all tests
-./mvnw test -Dtest=ClassName                     # Run single test class
-./mvnw test -Dtest=ClassName#methodName          # Run single test method
-
-# Building
-./mvnw clean package                             # Build JAR
-./mvnw clean install                             # Install to local Maven repo
-./mvnw clean package -DskipTests                 # Build without tests
-
-# Dependency Management
-./mvnw dependency:tree                           # Show dependency tree
-./mvnw dependency:analyze                        # Analyze dependencies
+./mvnw test
+# 或者更严格
+./mvnw verify
 ```
 
----
-
-## Key Dependencies & Versions
-
-- **Java**: 21
-- **Spring Boot**: 3.5.10
-- **MyBatis-Plus**: 3.5.10.1
-- **Hutool**: 5.8.37 (Chinese utility library)
-- **Knife4j**: 4.4.0 (API documentation)
-- **Lombok**: Provided by Spring Boot parent
-- **AgentScope Java**: 1.0.8
-- **Redis**: Spring Data Redis
-- **RabbitMQ**: Spring AMQP
-
----
-
-## Notes for AI Agents
-
-1. **Always use Lombok**: Prefer `@RequiredArgsConstructor` + final fields over `@Autowired`
-2. **Package naming mismatch**: Some config files have incorrect package (`com.zhemu.paperinsight` instead of `org.zhemu.alterego`) - fix when editing
-3. **ID serialization**: Long IDs are serialized to String in JSON (see `JsonConfig.java`)
-4. **Logical deletion**: Use `@TableLogic` on `isDelete` field for soft deletes
-5. **Chinese comments**: Project uses Chinese comments - maintain consistency or ask before changing
-6. **API prefix**: All endpoints are prefixed with `/api` (configured in `application.yml`)
-7. **CORS**: Cross-origin requests are allowed (see `CorsConfig.java`)
+## 5) Cursor / Copilot rules
+- 本仓库未发现：`.cursorrules`、`.cursor/rules/**`、`.github/copilot-instructions.md`。
+- 如未来新增这些规则：本文件应同步摘要其强制约束（尤其是：提交规范、禁用操作、格式化/测试要求）。
