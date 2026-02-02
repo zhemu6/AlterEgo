@@ -30,6 +30,26 @@ public class RateLimitInterceptor implements HandlerInterceptor {
 
     private final StringRedisTemplate stringRedisTemplate;
 
+    // Lua 脚本：原子性地检查和增加计数
+    // KEYS[1]: Redis key
+    // ARGV[1]: 过期时间（秒）
+    // ARGV[2]: 最大请求次数
+    // 返回值：当前计数（-1表示超限）
+    private static final String RATE_LIMIT_LUA_SCRIPT = 
+        "local current = redis.call('GET', KEYS[1]) " +
+        "if current == false then " +
+        "  redis.call('SET', KEYS[1], 1, 'EX', ARGV[1]) " +
+        "  return 1 " +
+        "else " +
+        "  local count = tonumber(current) " +
+        "  if count >= tonumber(ARGV[2]) then " +
+        "    return -1 " +
+        "  else " +
+        "    redis.call('INCR', KEYS[1]) " +
+        "    return count + 1 " +
+        "  end " +
+        "end";
+
     @Override
     public boolean preHandle(@NotNull HttpServletRequest request,
                              @NotNull HttpServletResponse response,
@@ -66,7 +86,7 @@ public class RateLimitInterceptor implements HandlerInterceptor {
 
         // 基于邮箱限流
         if (rateLimit.limitByEmail()) {
-            String email = request.getParameter("email");
+            String email = extractEmail(request);
             if (email != null && !email.isEmpty()) {
                 String emailKey = RedisConstants.RATE_LIMIT_PREFIX + rateLimit.key() + ":email:" + email;
                 checkLimit(emailKey, rateLimit, "Email: " + email);
@@ -75,32 +95,33 @@ public class RateLimitInterceptor implements HandlerInterceptor {
     }
 
     /**
+     * 从请求中提取邮箱地址
+     * 支持从查询参数和请求体中提取
+     */
+    private String extractEmail(HttpServletRequest request) {
+        // 先尝试从查询参数获取
+        String email = request.getParameter("email");
+        if (email != null && !email.isEmpty()) {
+            return email;
+        }
+        
+        // TODO: 如果需要支持从JSON请求体中提取email，可以在这里实现
+        // 注意：从请求体读取需要缓存，因为请求体流只能读取一次
+        // 建议在需要时使用 ContentCachingRequestWrapper
+        
+        return null;
+    }
+
+    /**
      * 检查指定key的访问频率是否超限
      * 使用 Lua 脚本保证原子性，避免并发问题
      */
     private void checkLimit(String key, RateLimit rateLimit, String identifier) {
-        // Lua 脚本：原子性地检查和增加计数
-        // 返回值：当前计数
-        String luaScript = 
-            "local current = redis.call('GET', KEYS[1]) " +
-            "if current == false then " +
-            "  redis.call('SET', KEYS[1], 1, 'EX', ARGV[1]) " +
-            "  return 1 " +
-            "else " +
-            "  local count = tonumber(current) " +
-            "  if count >= tonumber(ARGV[2]) then " +
-            "    return -1 " +
-            "  else " +
-            "    redis.call('INCR', KEYS[1]) " +
-            "    return count + 1 " +
-            "  end " +
-            "end";
-        
         // 执行 Lua 脚本
         Long count = stringRedisTemplate.execute(
             (org.springframework.data.redis.core.RedisCallback<Long>) connection -> {
                 return connection.stringCommands().eval(
-                    luaScript.getBytes(),
+                    RATE_LIMIT_LUA_SCRIPT.getBytes(),
                     org.springframework.data.redis.connection.ReturnType.INTEGER,
                     1,
                     key.getBytes(),

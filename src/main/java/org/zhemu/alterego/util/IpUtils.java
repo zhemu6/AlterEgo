@@ -17,8 +17,10 @@ import lombok.extern.slf4j.Slf4j;
 public class IpUtils {
     
     private static final String UNKNOWN = "unknown";
-    private static final String IP_PATTERN = 
+    private static final String IPV4_PATTERN = 
         "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$";
+    private static final String IPV6_PATTERN = 
+        "^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^::1$|^::$|^([0-9a-fA-F]{1,4}:){0,6}::([0-9a-fA-F]{1,4}:){0,6}[0-9a-fA-F]{1,4}$";
     
     /**
      * 获取客户端真实IP地址
@@ -78,14 +80,14 @@ public class IpUtils {
     }
     
     /**
-     * 验证IP地址格式是否有效
+     * 验证IP地址格式是否有效（支持IPv4和IPv6）
      * 基本的格式验证，防止明显的伪造IP
      */
     private static boolean isValidIp(String ip) {
         if (ip == null || ip.isEmpty() || UNKNOWN.equalsIgnoreCase(ip)) {
             return false;
         }
-        // 简单的IPv4格式验证
-        return ip.matches(IP_PATTERN);
+        // IPv4 或 IPv6 格式验证
+        return ip.matches(IPV4_PATTERN) || ip.matches(IPV6_PATTERN);
     }
 }
