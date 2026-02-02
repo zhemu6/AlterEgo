@@ -76,29 +76,47 @@ public class RateLimitInterceptor implements HandlerInterceptor {
 
     /**
      * 检查指定key的访问频率是否超限
+     * 使用 Lua 脚本保证原子性，避免并发问题
      */
     private void checkLimit(String key, RateLimit rateLimit, String identifier) {
-        // 获取当前访问次数
-        String countStr = stringRedisTemplate.opsForValue().get(key);
+        // Lua 脚本：原子性地检查和增加计数
+        // 返回值：当前计数
+        String luaScript = 
+            "local current = redis.call('GET', KEYS[1]) " +
+            "if current == false then " +
+            "  redis.call('SET', KEYS[1], 1, 'EX', ARGV[1]) " +
+            "  return 1 " +
+            "else " +
+            "  local count = tonumber(current) " +
+            "  if count >= tonumber(ARGV[2]) then " +
+            "    return -1 " +
+            "  else " +
+            "    redis.call('INCR', KEYS[1]) " +
+            "    return count + 1 " +
+            "  end " +
+            "end";
         
-        if (countStr == null) {
-            // 第一次访问，设置计数为1，并设置过期时间
-            stringRedisTemplate.opsForValue().set(key, "1", rateLimit.timeWindow(), TimeUnit.SECONDS);
-            log.debug("限流记录创建: key={}, identifier={}", key, identifier);
-            return;
-        }
-
-        // 检查是否超过限制
-        int count = Integer.parseInt(countStr);
-        if (count >= rateLimit.maxCount()) {
-            log.warn("请求频率超限: key={}, identifier={}, count={}, maxCount={}", 
-                     key, identifier, count, rateLimit.maxCount());
+        // 执行 Lua 脚本
+        Long count = stringRedisTemplate.execute(
+            (org.springframework.data.redis.core.RedisCallback<Long>) connection -> {
+                return connection.stringCommands().eval(
+                    luaScript.getBytes(),
+                    org.springframework.data.redis.connection.ReturnType.INTEGER,
+                    1,
+                    key.getBytes(),
+                    String.valueOf(rateLimit.timeWindow()).getBytes(),
+                    String.valueOf(rateLimit.maxCount()).getBytes()
+                );
+            }
+        );
+        
+        if (count == null || count == -1) {
+            log.warn("请求频率超限: key={}, identifier={}, maxCount={}", 
+                     key, identifier, rateLimit.maxCount());
             throw new BusinessException(ErrorCode.TOO_MANY_REQUEST, 
                                       "请求过于频繁，请稍后再试");
         }
-
-        // 增加计数
-        stringRedisTemplate.opsForValue().increment(key);
-        log.debug("限流记录更新: key={}, identifier={}, count={}", key, identifier, count + 1);
+        
+        log.debug("限流记录更新: key={}, identifier={}, count={}", key, identifier, count);
     }
 }
