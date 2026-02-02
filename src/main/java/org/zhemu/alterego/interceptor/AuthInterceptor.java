@@ -1,5 +1,6 @@
 package org.zhemu.alterego.interceptor;
 
+import cn.hutool.json.JSONUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -11,10 +12,11 @@ import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.zhemu.alterego.annotation.RequireLogin;
 import org.zhemu.alterego.annotation.RequireRole;
-import org.zhemu.alterego.constant.UserRole;
+import org.zhemu.alterego.constant.RedisConstants;
 import org.zhemu.alterego.exception.BusinessException;
 import org.zhemu.alterego.exception.ErrorCode;
 import org.zhemu.alterego.model.entity.SysUser;
+import org.zhemu.alterego.model.enums.UserRoleEnum;
 import org.zhemu.alterego.service.SysUserService;
 
 import java.util.Arrays;
@@ -34,7 +36,6 @@ public class AuthInterceptor implements HandlerInterceptor {
     
     private static final String TOKEN_HEADER = "Authorization";
     private static final String TOKEN_PREFIX = "Bearer ";
-    private static final String REDIS_LOGIN_KEY = "user:login:";
 
     @Override
     public boolean preHandle(@NotNull HttpServletRequest request,
@@ -94,7 +95,7 @@ public class AuthInterceptor implements HandlerInterceptor {
     }
 
     /**
-     * 验证登录并获取用户信息
+     * 验证登录并获取用户信息（优化：优先从缓存读取，避免查库）
      */
     private SysUser validateLoginAndGetUser(HttpServletRequest request) {
         // 1. 从Header获取Token
@@ -107,7 +108,7 @@ public class AuthInterceptor implements HandlerInterceptor {
         token = token.substring(TOKEN_PREFIX.length());
 
         // 2. 验证Token是否有效
-        String redisKey = REDIS_LOGIN_KEY + token;
+        String redisKey = RedisConstants.USER_LOGIN_TOKEN + token;
         String userIdStr = stringRedisTemplate.opsForValue().get(redisKey);
         
         if (userIdStr == null) {
@@ -116,15 +117,38 @@ public class AuthInterceptor implements HandlerInterceptor {
         }
 
         // 3. 刷新Token过期时间（30天）
-        stringRedisTemplate.expire(redisKey, 30, TimeUnit.DAYS);
+        stringRedisTemplate.expire(redisKey, RedisConstants.USER_LOGIN_TOKEN_TTL, TimeUnit.DAYS);
 
-        // 4. 查询用户信息
+        // 4. 优先从缓存获取用户信息（性能优化：避免每次请求查库）
         Long userId = Long.parseLong(userIdStr);
-        SysUser user = sysUserService.getById(userId);
+        String userCacheKey = RedisConstants.USER_INFO_CACHE + userId;
+        String userJson = stringRedisTemplate.opsForValue().get(userCacheKey);
         
-        if (user == null) {
-            log.error("用户不存在, userId: {}", userId);
-            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "用户不存在");
+        SysUser user;
+        if (userJson != null) {
+            // 缓存命中，直接反序列化
+            user = JSONUtil.toBean(userJson, SysUser.class);
+            // 刷新用户缓存过期时间
+            stringRedisTemplate.expire(userCacheKey, RedisConstants.USER_INFO_CACHE_TTL, TimeUnit.DAYS);
+            log.debug("从缓存获取用户信息, userId: {}", userId);
+        } else {
+            // 缓存未命中，查询数据库并回写缓存
+            user = sysUserService.getById(userId);
+            if (user == null) {
+                log.error("用户不存在, userId: {}", userId);
+                throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "用户不存在");
+            }
+            
+            // 回写缓存（密码字段置空）
+            user.setUserPassword(null);
+            String userJsonForCache = JSONUtil.toJsonStr(user);
+            stringRedisTemplate.opsForValue().set(
+                    userCacheKey,
+                    userJsonForCache,
+                    RedisConstants.USER_INFO_CACHE_TTL,
+                    TimeUnit.DAYS
+            );
+            log.debug("用户缓存未命中，已回写缓存, userId: {}", userId);
         }
 
         return user;
@@ -148,9 +172,17 @@ public class AuthInterceptor implements HandlerInterceptor {
             return;
         }
 
-        // 获取当前用户角色
-        UserRole currentRole = UserRole.fromValue(currentUser.getUserRole());
-        UserRole[] requiredRoles = targetAnnotation.value();
+        // 获取当前用户角色（安全性：fromValue可能返回null）
+        UserRoleEnum currentRole = UserRoleEnum.fromValue(currentUser.getUserRole());
+        
+        // 安全检查：如果角色无效，拒绝访问
+        if (currentRole == null) {
+            log.warn("无效的用户角色, userId: {}, role: {}", 
+                     currentUser.getId(), currentUser.getUserRole());
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "用户角色无效");
+        }
+        
+        UserRoleEnum[] requiredRoles = targetAnnotation.value();
 
         // 检查用户角色是否在允许的角色列表中
         boolean hasPermission = Arrays.asList(requiredRoles).contains(currentRole);

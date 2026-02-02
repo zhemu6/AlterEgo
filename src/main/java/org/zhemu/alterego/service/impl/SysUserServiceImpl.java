@@ -1,6 +1,7 @@
 package org.zhemu.alterego.service.impl;
 
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,6 +27,7 @@ import org.zhemu.alterego.model.enums.UserRoleEnum;
 import org.zhemu.alterego.model.enums.UserStatusEnum;
 import org.zhemu.alterego.model.vo.SysUserVO;
 import org.zhemu.alterego.service.SysUserService;
+import org.zhemu.alterego.util.UserContext;
 
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -85,7 +87,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser>
                 .userAccount(userAccount)
                 .userPassword(encryptedPassword)
                 .email(email)
-                .userRole(UserRoleEnum.User.getValue())
+                .userRole(UserRoleEnum.USER.getValue())
                 .userStatus(UserStatusEnum.Normal.getValue())
                 .build();
 
@@ -120,10 +122,24 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser>
         // 生成 token 并存入 Redis
         String token = UUID.randomUUID().toString();
         String tokenKey = RedisConstants.USER_LOGIN_TOKEN + token;
+        
+        // 存储 token -> userId 映射（保持兼容性）
         stringRedisTemplate.opsForValue().set(
                 tokenKey,
                 String.valueOf(user.getId()),
                 RedisConstants.USER_LOGIN_TOKEN_TTL,
+                TimeUnit.DAYS
+        );
+        
+        // 缓存完整用户对象，避免每次请求查库（性能优化）
+        String userCacheKey = RedisConstants.USER_INFO_CACHE + user.getId();
+        // 将密码字段置空，避免缓存敏感信息
+        user.setUserPassword(null);
+        String userJson = JSONUtil.toJsonStr(user);
+        stringRedisTemplate.opsForValue().set(
+                userCacheKey,
+                userJson,
+                RedisConstants.USER_INFO_CACHE_TTL,
                 TimeUnit.DAYS
         );
 
@@ -156,8 +172,8 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser>
         boolean matches = passwordEncoder.matches(userPassword, user.getUserPassword());
         ThrowUtils.throwIf(!matches, ErrorCode.PARAMS_ERROR, "账号或密码错误");
 
-        // 校验用户状态
-        ThrowUtils.throwIf(user.getUserStatus().equals(UserStatusEnum.Baned.getValue()),
+        // 校验用户状态（使用 Objects.equals 避免装箱问题和NPE）
+        ThrowUtils.throwIf(java.util.Objects.equals(user.getUserStatus(), UserStatusEnum.Baned.getValue()),
                 ErrorCode.FORBIDDEN_ERROR, "账号已被禁用");
 
         return user;
@@ -185,8 +201,8 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser>
         SysUser user = this.getOne(query);
         ThrowUtils.throwIf(user == null, ErrorCode.PARAMS_ERROR, "该邮箱未注册");
 
-        // 校验用户状态
-        ThrowUtils.throwIf(user.getUserStatus().equals(UserStatusEnum.Baned.getValue()),
+        // 校验用户状态（使用 Objects.equals 避免装箱问题和NPE）
+        ThrowUtils.throwIf(java.util.Objects.equals(user.getUserStatus(), UserStatusEnum.Baned.getValue()),
                 ErrorCode.FORBIDDEN_ERROR, "账号已被禁用");
 
         // 删除验证码
@@ -202,12 +218,19 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser>
         String token = getTokenFromRequest(httpRequest);
         ThrowUtils.throwIf(StrUtil.isBlank(token), ErrorCode.NOT_LOGIN_ERROR, "未登录");
 
+        // 获取userId（用于删除用户缓存）
+        Long userId = UserContext.getCurrentUserId();
+        
         // 删除 Redis 中的 token
         String tokenKey = RedisConstants.USER_LOGIN_TOKEN + token;
         Boolean deleted = stringRedisTemplate.delete(tokenKey);
+        
+        // 删除用户信息缓存
+        String userCacheKey = RedisConstants.USER_INFO_CACHE + userId;
+        stringRedisTemplate.delete(userCacheKey);
 
-        log.info("用户登出，token：{}", token);
-        return Boolean.TRUE.equals(deleted);
+        log.info("用户登出，userId: {}, token：{}", userId, token);
+        return deleted;
     }
 
     @Override
@@ -246,6 +269,10 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser>
 
         // 删除验证码
         stringRedisTemplate.delete(codeKey);
+        
+        // 删除用户缓存（密码已变更）
+        String userCacheKey = RedisConstants.USER_INFO_CACHE + user.getId();
+        stringRedisTemplate.delete(userCacheKey);
 
         log.info("用户重置密码成功，邮箱：{}, ID：{}", email, user.getId());
         return true;
@@ -278,6 +305,10 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser>
         user.setUserPassword(encryptedPassword);
         boolean updated = this.updateById(user);
         ThrowUtils.throwIf(!updated, ErrorCode.SYSTEM_ERROR, "密码更新失败");
+
+        // 删除用户缓存（密码已变更）
+        String userCacheKey = RedisConstants.USER_INFO_CACHE + user.getId();
+        stringRedisTemplate.delete(userCacheKey);
 
         log.info("用户修改密码成功，ID：{}", user.getId());
         return true;

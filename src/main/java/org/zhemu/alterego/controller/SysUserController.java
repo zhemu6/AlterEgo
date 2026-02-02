@@ -8,6 +8,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -51,8 +53,11 @@ public class SysUserController {
      */
     @PostMapping("/send-code")
     @Operation(summary = "发送邮箱验证码", description = "用于注册、登录、重置密码")
-    public BaseResponse<String> sendCode(@RequestParam String email) {
-        ThrowUtils.throwIf(null == email || email.isBlank(), ErrorCode.PARAMS_ERROR, "邮箱不能为空");
+    public BaseResponse<String> sendCode(
+            @RequestParam
+            @NotBlank(message = "邮箱不能为空")
+            @Email(message = "邮箱格式不正确")
+            String email) {
         mailService.sendCode(email);
         return ResultUtils.success("验证码已发送");
     }
