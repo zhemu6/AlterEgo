@@ -120,7 +120,14 @@ public class AuthInterceptor implements HandlerInterceptor {
         stringRedisTemplate.expire(redisKey, RedisConstants.USER_LOGIN_TOKEN_TTL, TimeUnit.DAYS);
 
         // 4. 优先从缓存获取用户信息（性能优化：避免每次请求查库）
-        Long userId = Long.parseLong(userIdStr);
+        Long userId;
+        try{
+            userId = Long.parseLong(userIdStr);
+        }catch (NumberFormatException e){
+            log.warn("Redis中的用户ID格式无效, userIdStr: {}, token: {}", userIdStr, token);
+            throw new BusinessException(ErrorCode.NOT_LOGIN_ERROR);
+        }
+
         String userCacheKey = RedisConstants.USER_INFO_CACHE + userId;
         String userJson = stringRedisTemplate.opsForValue().get(userCacheKey);
         

@@ -79,20 +79,41 @@ public class RateLimitInterceptor implements HandlerInterceptor {
      * 执行限流检查
      */
     private void checkRateLimit(HttpServletRequest request, RateLimit rateLimit) {
-        // 基于IP限流
-        if (rateLimit.limitByIp()) {
-            String clientIp = IpUtils.getClientIp(request);
-            String ipKey = RedisConstants.RATE_LIMIT_PREFIX + rateLimit.key() + ":ip:" + clientIp;
-            checkLimit(ipKey, rateLimit, "IP: " + clientIp);
+        boolean limitByIp = rateLimit.limitByIp();
+        boolean limitByEmail = rateLimit.limitByEmail();
+
+        String clientIp = null;
+        if (limitByIp) {
+            clientIp = IpUtils.getClientIp(request);
         }
 
-        // 基于邮箱限流
-        if (rateLimit.limitByEmail()) {
-            String email = extractEmail(request);
-            if (email != null && !email.isEmpty()) {
-                String emailKey = RedisConstants.RATE_LIMIT_PREFIX + rateLimit.key() + ":email:" + email;
-                checkLimit(emailKey, rateLimit, "Email: " + email);
+        String email = null;
+        if (limitByEmail) {
+            email = extractEmail(request);
+            if (email != null && email.isEmpty()) {
+                email = null;
             }
+        }
+
+        // 同时开启 IP + Email 时：以 (ip, email) 组合作为维度计数，避免不同邮箱互相影响
+        if (limitByIp && limitByEmail && email != null) {
+            String key = RedisConstants.RATE_LIMIT_PREFIX + rateLimit.key()
+                    + ":ip:" + clientIp
+                    + ":email:" + email;
+            checkLimit(key, rateLimit, "IP: " + clientIp + ", Email: " + email);
+            return;
+        }
+
+        // 仅 IP，或 Email 缺失时回退到 IP
+        if (limitByIp) {
+            String key = RedisConstants.RATE_LIMIT_PREFIX + rateLimit.key() + ":ip:" + clientIp;
+            checkLimit(key, rateLimit, "IP: " + clientIp);
+        }
+
+        // 仅 Email（且能取到 email）
+        if (!limitByIp && limitByEmail && email != null) {
+            String key = RedisConstants.RATE_LIMIT_PREFIX + rateLimit.key() + ":email:" + email;
+            checkLimit(key, rateLimit, "Email: " + email);
         }
     }
 
@@ -122,7 +143,7 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         // 执行 Lua 脚本
         Long count = stringRedisTemplate.execute(
                 (RedisCallback<Long>) connection -> {
-                    return connection.stringCommands().eval(
+                    return connection.scriptingCommands().eval(
                             RATE_LIMIT_LUA_SCRIPT.getBytes(StandardCharsets.UTF_8),
                             ReturnType.INTEGER,
                             1,

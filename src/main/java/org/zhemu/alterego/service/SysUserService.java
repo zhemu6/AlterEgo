@@ -29,7 +29,7 @@ public interface SysUserService extends IService<SysUser> {
      *
      * @param request     登录请求
      * @param httpRequest HTTP 请求
-     * @return 用户信息和 token
+     * @return 用户信息（token 通过响应头返回，不包含在返回值中）
      */
     SysUserVO login(SysUserLoginRequest request, HttpServletRequest httpRequest);
 

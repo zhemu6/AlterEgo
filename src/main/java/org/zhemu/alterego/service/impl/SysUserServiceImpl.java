@@ -290,11 +290,12 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser>
         // 校验两次密码是否一致
         ThrowUtils.throwIf(!newPassword.equals(checkPassword), ErrorCode.PARAMS_ERROR, "两次密码不一致");
 
-        // 通过 UserContext 获取当前用户
-        SysUser user = org.zhemu.alterego.util.UserContext.getCurrentUser();
+        // 通过 UserContext 获取当前用户ID（注意：拦截器会清空 userPassword，不能依赖 UserContext.getCurrentUser()）
+        Long userId = UserContext.getCurrentUserId();
+        SysUser user = this.getById(userId);
         ThrowUtils.throwIf(user == null, ErrorCode.NOT_FOUND_ERROR, "用户不存在");
 
-        // 校验旧密码
+        // 校验旧密码（DB 中的 userPassword 是 hash）
         boolean matches = passwordEncoder.matches(oldPassword, user.getUserPassword());
         ThrowUtils.throwIf(!matches, ErrorCode.PARAMS_ERROR, "旧密码错误");
 
@@ -307,10 +308,10 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser>
         ThrowUtils.throwIf(!updated, ErrorCode.SYSTEM_ERROR, "密码更新失败");
 
         // 删除用户缓存（密码已变更）
-        String userCacheKey = RedisConstants.USER_INFO_CACHE + user.getId();
+        String userCacheKey = RedisConstants.USER_INFO_CACHE + userId;
         stringRedisTemplate.delete(userCacheKey);
 
-        log.info("用户修改密码成功，ID：{}", user.getId());
+        log.info("用户修改密码成功，ID：{}", userId);
         return true;
     }
 
@@ -343,4 +344,3 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser>
         return attributes.getRequest();
     }
 }
-

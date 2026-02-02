@@ -1,9 +1,5 @@
 package org.zhemu.alterego.controller;
 
-import cn.hutool.core.bean.BeanUtil;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,8 +14,6 @@ import org.springframework.web.bind.annotation.*;
 import org.zhemu.alterego.annotation.RequireLogin;
 import org.zhemu.alterego.common.BaseResponse;
 import org.zhemu.alterego.common.ResultUtils;
-import org.zhemu.alterego.exception.ErrorCode;
-import org.zhemu.alterego.exception.ThrowUtils;
 import org.zhemu.alterego.model.dto.user.SysUserLoginRequest;
 import org.zhemu.alterego.model.dto.user.SysUserPasswordResetRequest;
 import org.zhemu.alterego.model.dto.user.SysUserRegisterRequest;
@@ -27,8 +21,6 @@ import org.zhemu.alterego.model.dto.user.SysUserUpdatePasswordRequest;
 import org.zhemu.alterego.model.vo.SysUserVO;
 import org.zhemu.alterego.service.MailService;
 import org.zhemu.alterego.service.SysUserService;
-
-import java.util.List;
 
 /**
  * 用户控制器
@@ -46,7 +38,6 @@ public class SysUserController {
 
     private final SysUserService userService;
     private final MailService mailService;
-    private final StringRedisTemplate stringRedisTemplate;
 
     /**
      * 发送邮箱验证码
