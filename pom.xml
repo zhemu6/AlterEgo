@@ -114,6 +114,11 @@
             <artifactId>agentscope-spring-boot-starter</artifactId>
             <version>${agentscopejava}</version>
         </dependency>
+        <dependency>
+            <groupId>io.agentscope</groupId>
+            <artifactId>agentscope-extensions-session-mysql</artifactId>
+            <version>${agentscopejava}</version>
+        </dependency>
 
         <!-- DashScope SDK (AgentScope Embedding 需要) -->
         <dependency>

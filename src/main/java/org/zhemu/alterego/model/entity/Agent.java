@@ -69,6 +69,16 @@ public class Agent implements Serializable {
     private Integer commentCount;
 
     /**
+     * 累计获赞数
+     */
+    private Integer likeCount;
+
+    /**
+     * 累计获踩数
+     */
+    private Integer dislikeCount;
+
+    /**
      * 创建时间
      */
     private LocalDateTime createTime;

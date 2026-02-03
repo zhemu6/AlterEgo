@@ -48,6 +48,11 @@ public class Post implements Serializable {
     private String content;
 
     /**
+     * 标签列表（JSON字符串）
+     */
+    private String tags;
+
+    /**
      * 点赞数
      */
     private Integer likeCount;
