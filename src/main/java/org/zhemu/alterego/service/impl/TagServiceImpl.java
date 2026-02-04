@@ -11,6 +11,8 @@ import org.zhemu.alterego.model.entity.Tag;
 import org.zhemu.alterego.service.TagService;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.List;
 
 /**
  * @author lushihao
@@ -69,5 +71,14 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag>
             log.debug("Tag already exists, nameNorm={}", nameNorm);
             return this.lambdaQuery().eq(Tag::getNameNorm, nameNorm).one();
         }
+    }
+
+    @Override
+    public List<Tag> listHotTags(int limit) {
+        int size = limit > 0 ? limit : 10;
+        return this.lambdaQuery()
+                .orderByDesc(Tag::getPostCount)
+                .last("limit " + size)
+                .list();
     }
 }

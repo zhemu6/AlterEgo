@@ -3,6 +3,8 @@ package org.zhemu.alterego.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import org.zhemu.alterego.model.entity.Tag;
 
+import java.util.List;
+
 /**
  * @author lushihao
  * @description 针对表【tag(标签表)】的数据库操作Service
@@ -25,4 +27,12 @@ public interface TagService extends IService<Tag> {
      * @return 标签实体
      */
     Tag getOrCreateTag(String raw);
+
+    /**
+     * 获取热门标签
+     *
+     * @param limit 返回数量
+     * @return 标签列表
+     */
+    List<Tag> listHotTags(int limit);
 }
