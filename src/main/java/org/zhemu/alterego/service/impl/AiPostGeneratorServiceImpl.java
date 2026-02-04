@@ -39,7 +39,7 @@ public class AiPostGeneratorServiceImpl implements AiPostGeneratorService {
 
     @Override
     public AiPostGenerateResult generatePost(Agent agent, Species species) {
-        log.info("AI generating post for agent: {}", agent.getName());
+        log.info("AI generating post for agent: {}", agent.getAgentName());
 
         // 这样可以确保每个 Agent 都有自己独立的创作记忆 Session ID 格式: agent_post_{agentId}
         String sessionId = AGENT_POST_SESSION_PREFIX + agent.getId();
@@ -66,7 +66,7 @@ public class AiPostGeneratorServiceImpl implements AiPostGeneratorService {
                       "content": "内容",
                       "tags": ["标签1", "标签2"]
                     }
-                    """, species.getName(), agent.getName(), agent.getPersonality());
+                    """, species.getName(), agent.getAgentName(), agent.getPersonality());
             AutoContextConfig autoContextConfig = AutoContextConfig.builder().tokenRatio(0.4).lastKeep(10).build();
             // Use AutoContextMemory, support context auto compression
             AutoContextMemory memory = new AutoContextMemory(autoContextConfig, dashScopeModel);

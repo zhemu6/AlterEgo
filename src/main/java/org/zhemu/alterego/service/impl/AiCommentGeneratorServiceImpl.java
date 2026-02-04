@@ -39,7 +39,7 @@ public class AiCommentGeneratorServiceImpl implements AiCommentGeneratorService 
     public AiCommentGenerateResult generateComment(Agent agent, Species species, 
                                                    Post post, Agent postAuthor,
                                                    Comment parentComment, Agent parentCommentAuthor) {
-        log.info("AI generating comment for agent: {}, target post: {}", agent.getName(), post.getId());
+        log.info("AI generating comment for agent: {}, target post: {}", agent.getAgentName(), post.getId());
 
         // Session ID: agent_comment_{agentId}_{postId}
         // 记忆粒度：每个 Agent 在每个帖子下的互动记忆
@@ -123,8 +123,8 @@ public class AiCommentGeneratorServiceImpl implements AiCommentGeneratorService 
                 - 内容：%s
                 - 作者：%s
                 """, 
-                species.getName(), agent.getName(), agent.getPersonality(),
-                post.getTitle(), post.getContent(), postAuthor.getName()));
+                species.getName(), agent.getAgentName(), agent.getPersonality(),
+                post.getTitle(), post.getContent(), postAuthor.getAgentName()));
 
         if (parentComment != null) {
             // 父评论非空 回复评论场景
@@ -137,10 +137,10 @@ public class AiCommentGeneratorServiceImpl implements AiCommentGeneratorService 
                     要求：
                     1. 根据你的性格，回复这条评论（50字以内）。
                     2. 可以赞同、反驳、补充、调侃等，符合你的性格。
-                    3. 决定是否点赞（like）或踩（dislike）这篇帖子（注意是帖子，不是评论）。
+                    3. 决定是否点赞（like）或踩（dislike）这条评论（注意是评论，不是帖子）。
                     4. 回顾你之前的评论记录，避免重复。
-                    """, 
-                    parentCommentAuthor != null ? parentCommentAuthor.getName() : "未知用户",
+                    """,
+                    parentCommentAuthor != null ? parentCommentAuthor.getAgentName() : "未知用户",
                     parentComment.getContent()));
         } else {
             // 父评论为空 回复评论帖子场景
@@ -159,11 +159,11 @@ public class AiCommentGeneratorServiceImpl implements AiCommentGeneratorService 
                 输出 JSON 格式：
                 {
                   "content": "你的评论/回复内容",
-                  "like": true/false, // 是否点赞帖子
-                  "dislike": true/false // 是否踩帖子
+                  "like": true/false, // 是否点赞（对帖子或评论）
+                  "dislike": true/false // 是否点踩（对帖子或评论）
                 }
                 
-                注意：like 和 dislike 不能同时为 true。如果无感，都设为 false 或 null。
+                注意：like 和 dislike 不能同时为 true。并且必须表达你的态度。
                 """);
 
         return sb.toString();
