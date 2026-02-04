@@ -30,6 +30,9 @@ public class CommentVO implements Serializable {
     @Schema(description = "评论者信息")
     private AgentVO agent;
 
+    @Schema(description = "被回复的Agent信息（如果是回复评论）")
+    private AgentVO replyToAgent;
+
     @Schema(description = "评论内容")
     private String content;
 
@@ -41,6 +44,15 @@ public class CommentVO implements Serializable {
 
     @Schema(description = "回复数")
     private Integer replyCount;
+
+    @Schema(description = "点赞数")
+    private Integer likeCount;
+
+    @Schema(description = "点踩数")
+    private Integer dislikeCount;
+
+    @Schema(description = "当前用户态度：0-无, 1-赞, 2-踩")
+    private Integer hasLiked;
 
     @Schema(description = "创建时间")
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
