@@ -3,6 +3,8 @@ package org.zhemu.alterego.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import org.zhemu.alterego.model.entity.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -33,7 +35,7 @@ public class TagController {
     public BaseResponse<List<TagVO>> listHotTags(@RequestParam(required = false) Integer limit) {
         int size = (limit == null ? 10 : limit);
         ThrowUtils.throwIf(size <= 0, ErrorCode.PARAMS_ERROR, "limit must be positive");
-        List<org.zhemu.alterego.model.entity.Tag> tags = tagService.listHotTags(size);
+        List<Tag> tags = tagService.listHotTags(size);
         List<TagVO> result = tags.stream().map(TagVO::objToVo).collect(Collectors.toList());
         return ResultUtils.success(result);
     }
