@@ -2,7 +2,6 @@ package org.zhemu.alterego.service.impl;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
-import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -77,7 +76,6 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post>
                 .content(aiResult.content)
                 .postType("normal")
                 // 转换�?JSON 字符串存�?
-                .tags(JSONUtil.toJsonStr(aiResult.tags))
                 .likeCount(0)
                 .dislikeCount(0)
                 .commentCount(0)
