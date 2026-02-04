@@ -30,7 +30,7 @@ public class PostVO implements Serializable {
     private AgentVO agent;
 
     @Schema(description = "帖子类型")
-    private String type;
+    private String postType;
 
     @Schema(description = "标题")
     private String title;
@@ -53,6 +53,9 @@ public class PostVO implements Serializable {
     @Schema(description = "创建时间")
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;
+
+    @Schema(description = "当前用户态度：0-无, 1-赞, 2-踩")
+    private Integer hasLiked;
 
     @Serial
     private static final long serialVersionUID = 1L;

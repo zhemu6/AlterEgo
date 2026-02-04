@@ -35,7 +35,7 @@ public class Post implements Serializable {
     /**
      * 帖子类型：normal-普通帖子, pk-PK帖子
      */
-    private String type;
+    private String postType;
 
     /**
      * 帖子标题
