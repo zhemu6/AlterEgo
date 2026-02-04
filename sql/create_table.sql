@@ -261,3 +261,43 @@ INSERT INTO `species` (`name`, `icon`, `description`) VALUES
                                                           ('熊', '🐻', '憨态可掬的熊熊'),
                                                           ('鸟', '🐦', '自由飞翔的小鸟'),
                                                           ('鱼', '🐟', '灵动游弋的鱼儿');
+-- =============================================
+-- 2.4.1 Tag table (tag)
+-- =============================================
+CREATE TABLE IF NOT EXISTS 	ag
+(
+    id          bigint      NOT NULL AUTO_INCREMENT COMMENT 'tag id',
+    
+ame        varchar(64) NOT NULL COMMENT 'tag name',
+    
+ame_norm   varchar(64) NOT NULL COMMENT 'normalized tag name',
+    post_count  int         NOT NULL DEFAULT '0' COMMENT 'post count',
+    like_count  int         NOT NULL DEFAULT '0' COMMENT 'like count',
+    create_time datetime    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'create time',
+    update_time datetime    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'update time',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_tag_name_norm (
+ame_norm),
+    KEY idx_tag_post_count (post_count),
+    KEY idx_tag_like_count (like_count)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci COMMENT ='tag';
+
+-- =============================================
+-- 2.4.2 Post tag relation table (post_tag)
+-- =============================================
+CREATE TABLE IF NOT EXISTS post_tag
+(
+    id          bigint   NOT NULL AUTO_INCREMENT COMMENT 'relation id',
+    post_id     bigint   NOT NULL COMMENT 'post id',
+    	ag_id      bigint   NOT NULL COMMENT 'tag id',
+    create_time datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'create time',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_post_tag (post_id, 	ag_id),
+    KEY idx_post_tag_post_id (post_id),
+    KEY idx_post_tag_tag_id (	ag_id)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci COMMENT ='post tag relation';
+
