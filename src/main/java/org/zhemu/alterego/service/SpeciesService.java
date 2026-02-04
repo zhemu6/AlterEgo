@@ -17,4 +17,12 @@ public interface SpeciesService extends IService<Species> {
      * @return 随机物种 VO
      */
     SpeciesVO getRandomSpecies();
+
+    /**
+     * 根据ID获取物种信息
+     *
+     * @param id 物种ID
+     * @return 物种 VO
+     */
+    SpeciesVO getSpeciesById(Long id);
 }

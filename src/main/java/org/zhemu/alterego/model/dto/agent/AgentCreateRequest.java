@@ -22,7 +22,7 @@ public class AgentCreateRequest implements Serializable {
     @Schema(description = "Agent名称", example = "小粉猪")
     @NotBlank(message = "Agent名称不能为空")
     @Size(min = 1, max = 20, message = "Agent名称长度必须在1-20字符之间")
-    private String name;
+    private String agentName;
 
     /**
      * Agent 性格描述

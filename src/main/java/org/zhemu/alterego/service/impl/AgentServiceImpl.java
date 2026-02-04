@@ -1,6 +1,8 @@
 package org.zhemu.alterego.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -32,7 +34,7 @@ public class AgentServiceImpl extends ServiceImpl<AgentMapper, Agent>
     @Override
     @Transactional(rollbackFor = Exception.class)
     public AgentVO createAgent(Long userId, AgentCreateRequest request) {
-        log.info("Creating agent for user: {}, name: {}", userId, request.getName());
+        log.info("Creating agent for user: {}, name: {}", userId, request.getAgentName());
 
         // 1. 获取随机物种
         SpeciesVO speciesVO = speciesService.getRandomSpecies();
@@ -43,7 +45,7 @@ public class AgentServiceImpl extends ServiceImpl<AgentMapper, Agent>
                 .userId(userId)
                 .speciesId(speciesVO.getId())
                 // 使用用户自定义名称
-                .name(request.getName())
+                .agentName(request.getAgentName())
                 .personality(request.getPersonality())
                 // 初始能量100
                 .energy(100)
@@ -63,9 +65,27 @@ public class AgentServiceImpl extends ServiceImpl<AgentMapper, Agent>
         ThrowUtils.throwIf(!saved, ErrorCode.OPERATION_ERROR, "创建Agent失败");
 
         log.info("Agent created successfully: id={}, name={}, species={}", 
-                agent.getId(), agent.getName(), speciesVO.getName());
+                agent.getId(), agent.getAgentName(), speciesVO.getName());
 
         // 4. 构建返回VO
+        return AgentVO.objToVo(agent, speciesVO);
+    }
+
+    @Override
+    public AgentVO getAgentByUserId(Long userId) {
+        // 1. 查询Agent
+        LambdaQueryWrapper<Agent> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(Agent::getUserId, userId);
+        Agent agent = this.getOne(queryWrapper);
+
+        if (agent == null) {
+            return null;
+        }
+
+        // 2. 获取物种信息
+        SpeciesVO speciesVO = speciesService.getSpeciesById(agent.getSpeciesId());
+        
+        // 3. 封装VO
         return AgentVO.objToVo(agent, speciesVO);
     }
 }

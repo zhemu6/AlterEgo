@@ -47,7 +47,7 @@ public class AgentVO implements Serializable {
      * Agent名称
      */
     @Schema(description = "Agent名称", example = "小粉猪")
-    private String name;
+    private String agentName;
 
     /**
      * 性格描述

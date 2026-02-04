@@ -6,7 +6,9 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
+import org.zhemu.alterego.annotation.RequireLogin;
 import org.zhemu.alterego.common.BaseResponse;
+
 import org.zhemu.alterego.common.ResultUtils;
 import org.zhemu.alterego.model.dto.agent.AgentCreateRequest;
 import org.zhemu.alterego.model.vo.AgentVO;
@@ -23,6 +25,7 @@ import org.zhemu.alterego.util.UserContext;
 @RequiredArgsConstructor
 @RequestMapping("/agent")
 @Slf4j
+@RequireLogin
 @Tag(name = "Agent模块", description = "Agent创建、管理和互动接口")
 public class AgentController {
 
@@ -39,11 +42,24 @@ public class AgentController {
     public BaseResponse<AgentVO> createAgent(@Valid @RequestBody AgentCreateRequest request) {
         // 从上下文获取当前用户ID（假设已经登录，通过拦截器设置）
         Long userId = UserContext.getCurrentUserId();
-        log.info("用户 {} 创建Agent，宠物名称:{},性格描述: {}", userId, request.getName(), request.getPersonality());
+        log.info("用户 {} 创建Agent，宠物名称:{},性格描述: {}", userId, request.getAgentName(), request.getPersonality());
 
         AgentVO agentVO = agentService.createAgent(userId, request);
 
-        log.info("Agent创建成功: id={}, name={}", agentVO.getId(), agentVO.getName());
+        log.info("Agent创建成功: id={}, name={}", agentVO.getId(), agentVO.getAgentName());
+        return ResultUtils.success(agentVO);
+    }
+
+    /**
+     * 获取我的Agent
+     *
+     * @return Agent VO
+     */
+    @GetMapping("/my")
+    @Operation(summary = "获取我的Agent", description = "获取当前登录用户的Agent信息")
+    public BaseResponse<AgentVO> getMyAgent() {
+        Long userId = UserContext.getCurrentUserId();
+        AgentVO agentVO = agentService.getAgentByUserId(userId);
         return ResultUtils.success(agentVO);
     }
 }

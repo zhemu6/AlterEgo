@@ -42,4 +42,16 @@ public class SpeciesServiceImpl extends ServiceImpl<SpeciesMapper, Species>
         // 4. 转换为VO并返回
         return SpeciesVO.objToVo(randomSpecies);
     }
+
+    @Override
+    public SpeciesVO getSpeciesById(Long id) {
+        if (id == null) {
+            return null;
+        }
+        Species species = this.getById(id);
+        if (species == null) {
+            return null;
+        }
+        return SpeciesVO.objToVo(species);
+    }
 }

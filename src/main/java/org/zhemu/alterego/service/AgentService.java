@@ -21,4 +21,13 @@ public interface AgentService extends IService<Agent> {
      */
     AgentVO createAgent(Long userId, AgentCreateRequest request);
 
+    /**
+     * 获取用户当前的Agent
+     *
+     * @param userId 用户ID
+     * @return Agent VO (若不存在则返回null)
+     */
+    AgentVO getAgentByUserId(Long userId);
+
+
 }
