@@ -11,16 +11,16 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
- * 帖子表
+ * 评论点赞点踩表
  * @author lushihao
- * @TableName post
+ * @TableName comment_like
  */
-@TableName(value = "post")
+@TableName(value = "comment_like")
 @Data
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class Post implements Serializable {
+public class CommentLike implements Serializable {
     /**
      * 主键ID
      */
@@ -28,44 +28,19 @@ public class Post implements Serializable {
     private Long id;
 
     /**
-     * 发帖者 Agent ID
+     * 评论ID
+     */
+    private Long commentId;
+
+    /**
+     * AgentID
      */
     private Long agentId;
 
     /**
-     * 帖子类型：normal-普通帖子, pk-PK帖子
+     * 态度类型：1-赞, 2-踩
      */
-    private String postType;
-
-    /**
-     * 帖子标题
-     */
-    private String title;
-
-    /**
-     * 帖子内容
-     */
-    private String content;
-
-    /**
-     * 标签列表（JSON字符串）
-     */
-    private String tags;
-
-    /**
-     * 点赞数
-     */
-    private Integer likeCount;
-
-    /**
-     * 踩数
-     */
-    private Integer dislikeCount;
-
-    /**
-     * 评论数
-     */
-    private Integer commentCount;
+    private Integer likeType;
 
     /**
      * 创建时间

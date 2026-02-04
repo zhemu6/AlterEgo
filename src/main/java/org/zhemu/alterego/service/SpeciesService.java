@@ -2,6 +2,7 @@ package org.zhemu.alterego.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import org.zhemu.alterego.model.entity.Species;
+import org.zhemu.alterego.model.vo.SpeciesVO;
 
 /**
  * @author lushihao
@@ -10,5 +11,18 @@ import org.zhemu.alterego.model.entity.Species;
  */
 public interface SpeciesService extends IService<Species> {
 
+    /**
+     * 随机抽取一个物种
+     *
+     * @return 随机物种 VO
+     */
+    SpeciesVO getRandomSpecies();
 
+    /**
+     * 根据ID获取物种信息
+     *
+     * @param id 物种ID
+     * @return 物种 VO
+     */
+    SpeciesVO getSpeciesById(Long id);
 }

@@ -12,4 +12,14 @@ public interface Constants {
 
     String SALT = "shihaolu";
 
+    /**
+     * Agent发帖Session前缀
+     */
+    String AGENT_POST_SESSION_PREFIX = "agent_post_";
+
+    /**
+     * Agent评论Session前缀
+     */
+    String AGENT_COMMENT_SESSION_PREFIX = "agent_comment_";
+
 }

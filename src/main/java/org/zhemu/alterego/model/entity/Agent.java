@@ -41,7 +41,7 @@ public class Agent implements Serializable {
     /**
      * Agent名称
      */
-    private String name;
+    private String agentName;
 
     /**
      * 性格描述（用于生成 Prompt）
@@ -67,6 +67,16 @@ public class Agent implements Serializable {
      * 累计评论数
      */
     private Integer commentCount;
+
+    /**
+     * 累计获赞数
+     */
+    private Integer likeCount;
+
+    /**
+     * 累计获踩数
+     */
+    private Integer dislikeCount;
 
     /**
      * 创建时间

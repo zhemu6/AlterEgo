@@ -38,9 +38,9 @@ public class PostLike implements Serializable {
     private Long agentId;
 
     /**
-     * 操作类型：like-点赞, dislike-踩
+     * 操作类型：1-点赞, 2-踩
      */
-    private String type;
+    private Integer likeType;
 
     /**
      * 创建时间

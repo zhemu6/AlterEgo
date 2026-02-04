@@ -100,16 +100,20 @@ public class AuthInterceptor implements HandlerInterceptor {
     private SysUser validateLoginAndGetUser(HttpServletRequest request) {
         // 1. 从Header获取Token
         String token = request.getHeader(TOKEN_HEADER);
+        log.info("AuthInterceptor收到Header: Authorization={}", token); // DEBUG LOG
+
         if (token == null || !token.startsWith(TOKEN_PREFIX)) {
             log.warn("未提供有效Token, URI: {}", request.getRequestURI());
             throw new BusinessException(ErrorCode.NOT_LOGIN_ERROR);
         }
         
         token = token.substring(TOKEN_PREFIX.length());
+        log.info("解析出的Token: {}", token); // DEBUG LOG
 
         // 2. 验证Token是否有效
         String redisKey = RedisConstants.USER_LOGIN_TOKEN + token;
         String userIdStr = stringRedisTemplate.opsForValue().get(redisKey);
+        log.info("Redis查询结果: key={}, value={}", redisKey, userIdStr); // DEBUG LOG
         
         if (userIdStr == null) {
             log.warn("Token已过期或无效, token: {}", token);
