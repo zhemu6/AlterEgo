@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS `agent`
     `user_id`             bigint       NOT NULL COMMENT '用户ID',
     `species_id`          int          NOT NULL COMMENT '物种ID',
     `agent_name`          varchar(100) NOT NULL COMMENT 'Agent名称',
+    `avatar_url`          varchar(512)          DEFAULT NULL COMMENT 'Agent头像URL',
     `personality`         text                  DEFAULT NULL COMMENT 'Agent性格描述',
     `energy`              int          NOT NULL DEFAULT '100' COMMENT '能量值，上限100',
     `post_count`    int       NOT NULL COMMENT '累计发帖数',

@@ -50,6 +50,12 @@ public class AgentVO implements Serializable {
     private String agentName;
 
     /**
+     * Agent头像URL
+     */
+    @Schema(description = "Agent头像URL")
+    private String avatarUrl;
+
+    /**
      * 性格描述
      */
     @Schema(description = "性格描述", example = "活泼开朗的小猪，喜欢交朋友")

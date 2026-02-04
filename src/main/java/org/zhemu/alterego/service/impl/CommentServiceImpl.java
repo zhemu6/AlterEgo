@@ -44,6 +44,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment>
     private final PostLikeService postLikeService;
     private final CommentLikeService commentLikeService;
     private final AiCommentGeneratorService aiCommentGeneratorService;
+    private final RankService rankService;
 
     // 评论消耗能量
     private static final int COMMENT_ENERGY_COST = 5;
@@ -250,7 +251,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment>
                 .map(Comment::getParentCommentId)
                 .filter(id -> id != null)
                 .collect(Collectors.toSet());
-        
+
         Map<Long, Long> parentCommentAgentIdMap = new HashMap<>();
         if (CollUtil.isNotEmpty(parentCommentIds)) {
             // 查出父评论，提取其 AgentId
@@ -309,7 +310,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment>
                     }
                 }
             }
-            
+
             commentVO.setHasLiked(finalLikeStatusMap.getOrDefault(comment.getId(), 0));
             return commentVO;
         }).collect(Collectors.toList());
@@ -336,7 +337,11 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment>
             (aiResult.getDislike() == null || !aiResult.getDislike())) {
             return;
         }
-
+        Post post = postService.getById(postId);
+        if (post == null) {
+            return;
+        }
+        Long postOwnerAgentId = post.getAgentId();
         // 检查是否已存在 like/dislike 记录
         PostLike existingLike = postLikeService.lambdaQuery()
                 .eq(PostLike::getAgentId, agentId)
@@ -371,12 +376,14 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment>
                         .eq(Post::getId, postId)
                         .setSql("like_count = GREATEST(like_count - 1, 0), dislike_count = dislike_count + 1")
                         .update();
+                rankService.incrementAgentLike(postOwnerAgentId, -1);
             } else {
                 // 原来是踩，现在变成赞
                 postService.lambdaUpdate()
                         .eq(Post::getId, postId)
                         .setSql("dislike_count = GREATEST(dislike_count - 1, 0), like_count = like_count + 1")
                         .update();
+                rankService.incrementAgentLike(postOwnerAgentId, 1);
             }
         } else {
             // 新建记录
@@ -396,6 +403,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment>
                         .eq(Post::getId, postId)
                         .setSql("like_count = like_count + 1")
                         .update();
+                rankService.incrementAgentLike(postOwnerAgentId, 1);
             } else {
                 postService.lambdaUpdate()
                         .eq(Post::getId, postId)
@@ -414,7 +422,11 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment>
             (aiResult.getDislike() == null || !aiResult.getDislike())) {
             return;
         }
-
+        Comment comment = this.getById(commentId);
+        if (comment == null) {
+            return;
+        }
+        Long commentOwnerAgentId = comment.getAgentId();
         // 检查是否已存在 like/dislike 记录
         CommentLike existingLike = commentLikeService.lambdaQuery()
                 .eq(CommentLike::getAgentId, agentId)
@@ -435,7 +447,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment>
             
             // 类型不同，更新记录
             boolean wasLike = LikeTypeEnum.LIKE.getValue() == existingLike.getLikeType();
-            
+
             existingLike.setLikeType(newTypeValue);
             existingLike.setUpdateTime(LocalDateTime.now());
             commentLikeService.updateById(existingLike);
@@ -447,12 +459,14 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment>
                         .eq(Comment::getId, commentId)
                         .setSql("like_count = GREATEST(like_count - 1, 0), dislike_count = dislike_count + 1")
                         .update();
+                rankService.incrementAgentLike(commentOwnerAgentId, -1);
             } else {
                 // 原来是踩，现在变成赞
                 this.lambdaUpdate()
                         .eq(Comment::getId, commentId)
                         .setSql("dislike_count = GREATEST(dislike_count - 1, 0), like_count = like_count + 1")
                         .update();
+                rankService.incrementAgentLike(commentOwnerAgentId, 1);
             }
         } else {
             // 新建记录
@@ -472,6 +486,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment>
                         .eq(Comment::getId, commentId)
                         .setSql("like_count = like_count + 1")
                         .update();
+                rankService.incrementAgentLike(commentOwnerAgentId, 1);
             } else {
                 this.lambdaUpdate()
                         .eq(Comment::getId, commentId)

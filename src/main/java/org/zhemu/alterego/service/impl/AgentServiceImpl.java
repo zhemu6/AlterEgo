@@ -5,20 +5,29 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.zhemu.alterego.exception.ErrorCode;
 import org.zhemu.alterego.exception.ThrowUtils;
 import org.zhemu.alterego.mapper.AgentMapper;
+import org.zhemu.alterego.model.dto.agent.AgentAvatarTaskMessage;
 import org.zhemu.alterego.model.dto.agent.AgentCreateRequest;
 import org.zhemu.alterego.model.entity.Agent;
+import org.zhemu.alterego.model.entity.Species;
 import org.zhemu.alterego.model.vo.AgentVO;
+import org.zhemu.alterego.model.vo.AgentRankVO;
 import org.zhemu.alterego.model.vo.SpeciesVO;
+import org.zhemu.alterego.mq.MessageProducer;
 import org.zhemu.alterego.service.AgentService;
+import org.zhemu.alterego.service.RankService;
 import org.zhemu.alterego.service.SpeciesService;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.*;
+import java.util.stream.Collectors;
+
 
 /**
  * @author lushihao
@@ -30,6 +39,11 @@ public class AgentServiceImpl extends ServiceImpl<AgentMapper, Agent>
         implements AgentService {
 
     private final SpeciesService speciesService;
+    private final MessageProducer messageProducer;
+    private final RankService rankService;
+
+    @Value("${agent.avatar.default-url:}")
+    private String defaultAvatarUrl;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -44,17 +58,18 @@ public class AgentServiceImpl extends ServiceImpl<AgentMapper, Agent>
         Agent agent = Agent.builder()
                 .userId(userId)
                 .speciesId(speciesVO.getId())
-                // 使用用户自定义名称
+                // 使用用户自定义名
                 .agentName(request.getAgentName())
+                .avatarUrl(defaultAvatarUrl)
                 .personality(request.getPersonality())
                 // 初始能量100
                 .energy(100)
                 .lastEnergyReset(LocalDate.now())
                 .postCount(0)
                 .commentCount(0)
-                // 初始获赞数0
+                // 初始获赞
                 .likeCount(0)
-                // 初始获踩数0
+                // 初始获踩
                 .dislikeCount(0)
                 .createTime(LocalDateTime.now())
                 .updateTime(LocalDateTime.now())
@@ -64,7 +79,7 @@ public class AgentServiceImpl extends ServiceImpl<AgentMapper, Agent>
         boolean saved = this.save(agent);
         ThrowUtils.throwIf(!saved, ErrorCode.OPERATION_ERROR, "创建Agent失败");
 
-        log.info("Agent created successfully: id={}, name={}, species={}", 
+        log.info("Agent created successfully: id={}, name={}, species={}",
                 agent.getId(), agent.getAgentName(), speciesVO.getName());
 
         // 4. 构建返回VO
@@ -87,5 +102,64 @@ public class AgentServiceImpl extends ServiceImpl<AgentMapper, Agent>
         
         // 3. 封装VO
         return AgentVO.objToVo(agent, speciesVO);
+    }
+
+    @Override
+    public boolean generateAvatar(Long userId, Long agentId) {
+        ThrowUtils.throwIf(agentId == null || agentId <= 0, ErrorCode.PARAMS_ERROR, "Agent ID不合法");
+        Agent agent = this.getById(agentId);
+        ThrowUtils.throwIf(agent == null, ErrorCode.NOT_FOUND_ERROR, "Agent不存在");
+        ThrowUtils.throwIf(!agent.getUserId().equals(userId), ErrorCode.NO_AUTH_ERROR, "无权限操作该Agent");
+        SpeciesVO speciesVO = speciesService.getSpeciesById(agent.getSpeciesId());
+        ThrowUtils.throwIf(speciesVO == null, ErrorCode.SYSTEM_ERROR, "获取物种失败");
+
+        AgentAvatarTaskMessage task = new AgentAvatarTaskMessage();
+        task.setAgentId(agent.getId());
+        task.setSpeciesName(speciesVO.getName());
+        task.setPersonality(agent.getPersonality());
+        messageProducer.sendAgentAvatarTask(task);
+        return true;
+    }
+
+    @Override
+    public List<AgentRankVO> getLikeRankTop(int limit) {
+        if (limit <= 0) {
+            return Collections.emptyList();
+        }
+       LinkedHashMap<Long, Integer> rankMap = rankService.getTopAgentLike(limit);
+        if (rankMap.isEmpty()) {
+            return Collections.emptyList();
+        }
+        Set<Long> agentIds = rankMap.keySet();
+        Map<Long, Agent> agentMap = this.listByIds(agentIds).stream()
+                .collect(Collectors.toMap(Agent::getId, agent -> agent));
+        Set<Long> speciesIds = agentMap.values().stream()
+                .map(Agent::getSpeciesId)
+                .collect(Collectors.toSet());
+        Map<Long, Species> speciesMap =
+                speciesService.listByIds(speciesIds).stream()
+                        .collect(Collectors.toMap(
+                                Species::getId, s -> s));
+
+        List<AgentRankVO> result = new ArrayList<>();
+        int rank = 1;
+        for (Map.Entry<Long, Integer> entry : rankMap.entrySet()) {
+            Agent agent = agentMap.get(entry.getKey());
+            if (agent == null) {
+                continue;
+            }
+            AgentRankVO vo = new AgentRankVO();
+            vo.setRank(rank++);
+            vo.setAgentId(agent.getId());
+            vo.setAgentName(agent.getAgentName());
+            vo.setAvatarUrl(agent.getAvatarUrl());
+            Species species = speciesMap.get(agent.getSpeciesId());
+            if (species != null) {
+                vo.setSpecies(SpeciesVO.objToVo(species));
+            }
+            vo.setLikeCount(entry.getValue());
+            result.add(vo);
+        }
+        return result;
     }
 }

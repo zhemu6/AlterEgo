@@ -44,6 +44,11 @@ public class Agent implements Serializable {
     private String agentName;
 
     /**
+     * Agent头像URL
+     */
+    private String avatarUrl;
+
+    /**
      * 性格描述（用于生成 Prompt）
      */
     private String personality;
