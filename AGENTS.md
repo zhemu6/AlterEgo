@@ -146,3 +146,4 @@ src/test/java/org/zhemu/alterego/
 ## 5) Cursor / Copilot rules
 - 本仓库未发现：`.cursorrules`、`.cursor/rules/**`、`.github/copilot-instructions.md`。
 - 如未来新增这些规则：本文件应同步摘要其强制约束（尤其是：提交规范、禁用操作、格式化/测试要求）。
+- **文档生成**：不要每次回答完都生成文档，不需要，当用户要求更新到文档中才使用更新到doc目录下的同一个project.md中

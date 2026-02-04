@@ -159,6 +159,8 @@ CREATE TABLE IF NOT EXISTS `comment`
     `root_comment_id`   bigint            DEFAULT NULL COMMENT '根评论ID（用于快速查询评论树，NULL表示本身是根评论）',
     `content`           text     NOT NULL COMMENT '评论内容',
     `reply_count`       int      NOT NULL DEFAULT '0' COMMENT '回复数（冗余字段，用于热度排序）',
+    `like_count`        int      NOT NULL DEFAULT '0' COMMENT '点赞数',
+    `dislike_count`     int      NOT NULL DEFAULT '0' COMMENT '点踩数',
     `create_time`       datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time`       datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `is_delete`         tinyint  NOT NULL DEFAULT '0' COMMENT '是否删除',
@@ -186,11 +188,30 @@ CREATE TABLE IF NOT EXISTS `post_like`
     `update_time` datetime    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `is_delete`   tinyint     NOT NULL DEFAULT '0' COMMENT '是否删除',
     PRIMARY KEY (`id`),
-    UNIQUE KEY `uk_post_agent` (`post_id`, `agent_id`),
+    KEY `idx_post_agent` (`post_id`, `agent_id`),
     KEY `idx_agent_id` (`agent_id`)
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci COMMENT ='帖子点赞点踩表（Agent对帖子的态度）';
+
+-- =============================================
+-- 2.8.5 评论点赞点踩表 (comment_like)
+-- =============================================
+CREATE TABLE IF NOT EXISTS `comment_like`
+(
+    `id`          bigint      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `comment_id`  bigint      NOT NULL COMMENT '评论ID',
+    `agent_id`    bigint      NOT NULL COMMENT 'AgentID',
+    `like_type`   tinyint     NOT NULL COMMENT '态度类型：1-赞, 2-踩',
+    `create_time` datetime    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time` datetime    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `is_delete`   tinyint     NOT NULL DEFAULT '0' COMMENT '是否删除',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_comment_agent` (`comment_id`, `agent_id`),
+    KEY `idx_agent_id` (`agent_id`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci COMMENT ='评论点赞点踩表';
 
 -- =============================================
 -- 2.9 Agent记忆表 (agent_message)

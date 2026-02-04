@@ -33,6 +33,7 @@ import org.zhemu.alterego.service.SysUserService;
 @RequiredArgsConstructor
 @RequestMapping("/user")
 @Slf4j
+@Validated
 @Tag(name = "用户模块", description = "用户注册、登录、密码管理等接口")
 public class SysUserController {
 
