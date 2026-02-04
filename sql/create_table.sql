@@ -89,7 +89,6 @@ CREATE TABLE IF NOT EXISTS `post`
     `post_type`   varchar(20)  NOT NULL DEFAULT 'normal' COMMENT '帖子类型：normal-普通帖, pk-PK帖',
     `title`       varchar(200) NOT NULL COMMENT '帖子标题',
     `content`     text                  DEFAULT NULL COMMENT '帖子内容（普通帖有，PK帖可为空）',
-    `tags`        json                  DEFAULT NULL COMMENT '标签列表（JSON字符串）',
     `like_count`  int          NOT NULL DEFAULT '0' COMMENT '点赞数',
     `dislike_count` int        NOT NULL DEFAULT '0' COMMENT '点踩数',
     `comment_count` int        NOT NULL DEFAULT '0' COMMENT '评论数（冗余字段，便于排序）',
@@ -217,20 +216,36 @@ CREATE TABLE IF NOT EXISTS `comment_like`
 -- =============================================
 -- 2.9 Agent记忆表 (agent_message)
 -- =============================================
-CREATE TABLE IF NOT EXISTS `agent_message`
+CREATE TABLE IF NOT EXISTS `tag`
 (
-    `id`          bigint       NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-    `session_id`  varchar(64)  NOT NULL COMMENT '会话ID (用户ID_AgentID)',
-    `agent_id`    bigint       NOT NULL COMMENT 'Agent ID',
-    `role`        varchar(20)  NOT NULL COMMENT '角色：user, assistant, system',
-    `content`     text         NOT NULL COMMENT '消息内容',
-    `create_time` datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `id`          bigint      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `name`        varchar(64) NOT NULL COMMENT '标签名（原始）',
+    `name_norm`   varchar(64) NOT NULL COMMENT '标签名规范化（小写+去空格）',
+    `post_count`  int         NOT NULL DEFAULT '0' COMMENT '关联帖子数',
+    `like_count`  int         NOT NULL DEFAULT '0' COMMENT '关联帖子总赞数',
+    `create_time` datetime    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time` datetime    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`),
-    KEY `idx_session_id` (`session_id`),
-    KEY `idx_create_time` (`create_time`)
+    UNIQUE KEY `uk_tag_name_norm` (`name_norm`),
+    KEY `idx_tag_post_count` (`post_count`),
+    KEY `idx_tag_like_count` (`like_count`)
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
-  COLLATE = utf8mb4_unicode_ci COMMENT ='Agent记忆表（持久化对话历史）';
+  COLLATE = utf8mb4_unicode_ci COMMENT ='标签表';
+
+CREATE TABLE IF NOT EXISTS `post_tag`
+(
+    `id`          bigint   NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `post_id`     bigint   NOT NULL COMMENT '帖子ID',
+    `tag_id`      bigint   NOT NULL COMMENT '标签ID',
+    `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_post_tag` (`post_id`, `tag_id`),
+    KEY `idx_post_tag_post_id` (`post_id`),
+    KEY `idx_post_tag_tag_id` (`tag_id`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci COMMENT ='帖子标签关联表';
 
 -- =============================================
 -- 3. 初始化数据
@@ -246,3 +261,43 @@ INSERT INTO `species` (`name`, `icon`, `description`) VALUES
                                                           ('熊', '🐻', '憨态可掬的熊熊'),
                                                           ('鸟', '🐦', '自由飞翔的小鸟'),
                                                           ('鱼', '🐟', '灵动游弋的鱼儿');
+-- =============================================
+-- 2.4.1 Tag table (tag)
+-- =============================================
+CREATE TABLE IF NOT EXISTS 	ag
+(
+    id          bigint      NOT NULL AUTO_INCREMENT COMMENT 'tag id',
+    
+ame        varchar(64) NOT NULL COMMENT 'tag name',
+    
+ame_norm   varchar(64) NOT NULL COMMENT 'normalized tag name',
+    post_count  int         NOT NULL DEFAULT '0' COMMENT 'post count',
+    like_count  int         NOT NULL DEFAULT '0' COMMENT 'like count',
+    create_time datetime    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'create time',
+    update_time datetime    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'update time',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_tag_name_norm (
+ame_norm),
+    KEY idx_tag_post_count (post_count),
+    KEY idx_tag_like_count (like_count)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci COMMENT ='tag';
+
+-- =============================================
+-- 2.4.2 Post tag relation table (post_tag)
+-- =============================================
+CREATE TABLE IF NOT EXISTS post_tag
+(
+    id          bigint   NOT NULL AUTO_INCREMENT COMMENT 'relation id',
+    post_id     bigint   NOT NULL COMMENT 'post id',
+    	ag_id      bigint   NOT NULL COMMENT 'tag id',
+    create_time datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'create time',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_post_tag (post_id, 	ag_id),
+    KEY idx_post_tag_post_id (post_id),
+    KEY idx_post_tag_tag_id (	ag_id)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci COMMENT ='post tag relation';
+

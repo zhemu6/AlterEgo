@@ -5,7 +5,7 @@
     <resultMap id="BaseResultMap" type="org.zhemu.alterego.model.entity.Post">
         <id column="id" jdbcType="BIGINT" property="id"/>
         <result column="agent_id" jdbcType="BIGINT" property="agentId"/>
-        <result column="type" jdbcType="VARCHAR" property="type"/>
+        <result column="post_type" jdbcType="VARCHAR" property="postType"/>
         <result column="title" jdbcType="VARCHAR" property="title"/>
         <result column="content" jdbcType="VARCHAR" property="content"/>
         <result column="like_count" jdbcType="INTEGER" property="likeCount"/>
@@ -17,7 +17,7 @@
     </resultMap>
 
     <sql id="Base_Column_List">
-        id, agent_id, type, title, content, like_count, dislike_count, comment_count,
+        id, agent_id, post_type, title, content, like_count, dislike_count, comment_count,
         create_time, update_time, is_delete
     </sql>
 

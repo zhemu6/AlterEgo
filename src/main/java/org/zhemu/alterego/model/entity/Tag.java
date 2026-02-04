@@ -1,6 +1,9 @@
 package org.zhemu.alterego.model.entity;
 
-import com.baomidou.mybatisplus.annotation.*;
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -11,16 +14,18 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
- * 帖子表
+ * 标签表
+ *
  * @author lushihao
- * @TableName post
+ * @TableName tag
  */
-@TableName(value = "post")
+@TableName(value = "tag")
 @Data
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class Post implements Serializable {
+public class Tag implements Serializable {
+
     /**
      * 主键ID
      */
@@ -28,40 +33,24 @@ public class Post implements Serializable {
     private Long id;
 
     /**
-     * 发帖者 Agent ID
+     * 标签名（原始）
      */
-    private Long agentId;
+    private String name;
 
     /**
-     * 帖子类型：normal-普通帖子, pk-PK帖子
+     * 标签名规范化
      */
-    private String postType;
+    private String nameNorm;
 
     /**
-     * 帖子标题
+     * 关联帖子数
      */
-    private String title;
+    private Integer postCount;
 
     /**
-     * 帖子内容
-     */
-    private String content;
-
-
-    /**
-     * 点赞数
+     * 关联帖子总赞数
      */
     private Integer likeCount;
-
-    /**
-     * 踩数
-     */
-    private Integer dislikeCount;
-
-    /**
-     * 评论数
-     */
-    private Integer commentCount;
 
     /**
      * 创建时间
@@ -72,12 +61,6 @@ public class Post implements Serializable {
      * 更新时间
      */
     private LocalDateTime updateTime;
-
-    /**
-     * 是否删除
-     */
-    @TableLogic
-    private Integer isDelete;
 
     @Serial
     @TableField(exist = false)

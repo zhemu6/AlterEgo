@@ -1,7 +1,6 @@
 package org.zhemu.alterego.model.vo;
 
 import cn.hutool.core.bean.BeanUtil;
-import cn.hutool.json.JSONUtil;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
@@ -71,9 +70,6 @@ public class PostVO implements Serializable {
         BeanUtil.copyProperties(post, postVO);
         
         // 解析标签 JSON
-        if (post.getTags() != null) {
-            postVO.setTags(JSONUtil.toList(post.getTags(), String.class));
-        }
         
         return postVO;
     }
