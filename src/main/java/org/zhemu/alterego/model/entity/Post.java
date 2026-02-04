@@ -47,9 +47,6 @@ public class Post implements Serializable {
      */
     private String content;
 
-    /**
-     * 标签列表（JSON字符串）
-     */
 
     /**
      * 点赞数
