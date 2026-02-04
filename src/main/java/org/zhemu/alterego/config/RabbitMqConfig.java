@@ -16,8 +16,8 @@ public class RabbitMqConfig {
     // 登录验证码队列
     public static final String LOGIN_EMAIL_CODE_QUEUE = "email.code.queue";
 
-    // 论文分析队列
-    public static final String PAPER_ANALYSIS_QUEUE = "paper.analysis.queue";
+    // Agent头像生成队列
+    public static final String AGENT_AVATAR_QUEUE = "agent.avatar.queue";
 
     @Bean
     public Queue codeQueue() {
@@ -25,8 +25,8 @@ public class RabbitMqConfig {
     }
 
     @Bean
-    public Queue analysisQueue() {
-        return new Queue(PAPER_ANALYSIS_QUEUE, true);
+    public Queue agentAvatarQueue() {
+        return new Queue(AGENT_AVATAR_QUEUE, true);
     }
 
 }

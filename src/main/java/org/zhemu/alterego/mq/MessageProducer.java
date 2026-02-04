@@ -5,9 +5,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 import org.zhemu.alterego.config.RabbitMqConfig;
+import org.zhemu.alterego.model.dto.agent.AgentAvatarTaskMessage;
+import cn.hutool.json.JSONUtil;
 
 /**
- * 消息队列生产者
+ * 消息队列生产
  *
  * @author: lushihao
  * @version: 1.0
@@ -32,4 +34,17 @@ public class MessageProducer {
         rabbitTemplate.convertAndSend(RabbitMqConfig.LOGIN_EMAIL_CODE_QUEUE,message);
     }
 
+
+    /**
+     * Agent 发送头像生成任务
+     *
+     * @param message 头像生成任务消息
+     */
+    public void sendAgentAvatarTask(AgentAvatarTaskMessage message) {
+        if (message == null) {
+            return;
+        }
+        String payload = JSONUtil.toJsonStr(message);
+        rabbitTemplate.convertAndSend(RabbitMqConfig.AGENT_AVATAR_QUEUE, payload);
+    }
 }

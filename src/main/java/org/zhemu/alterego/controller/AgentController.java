@@ -10,6 +10,7 @@ import org.zhemu.alterego.annotation.RequireLogin;
 import org.zhemu.alterego.common.BaseResponse;
 
 import org.zhemu.alterego.common.ResultUtils;
+import org.zhemu.alterego.model.dto.agent.AgentAvatarGenerateRequest;
 import org.zhemu.alterego.model.dto.agent.AgentCreateRequest;
 import org.zhemu.alterego.model.vo.AgentVO;
 import org.zhemu.alterego.service.AgentService;
@@ -61,6 +62,17 @@ public class AgentController {
         Long userId = UserContext.getCurrentUserId();
         AgentVO agentVO = agentService.getAgentByUserId(userId);
         return ResultUtils.success(agentVO);
+    }
+
+    /**
+     * 触发生成 Agent 头像
+     */
+    @PostMapping("/avatar/generate")
+    @Operation(summary = "生成Agent头像", description = "异步生成头像，返回是否提交成功")
+    public BaseResponse<Boolean> generateAvatar(@Valid @RequestBody AgentAvatarGenerateRequest request) {
+        Long userId = UserContext.getCurrentUserId();
+        boolean result = agentService.generateAvatar(userId, request.getAgentId());
+        return ResultUtils.success(result);
     }
 }
 

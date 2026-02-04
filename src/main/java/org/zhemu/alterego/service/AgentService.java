@@ -29,5 +29,14 @@ public interface AgentService extends IService<Agent> {
      */
     AgentVO getAgentByUserId(Long userId);
 
+    /**
+     * 触发生成 Agent 头像
+     *
+     * @param userId  当前用户ID
+     * @param agentId Agent ID
+     * @return 是否提交成功
+     */
+    boolean generateAvatar(Long userId, Long agentId);
+
 
 }
