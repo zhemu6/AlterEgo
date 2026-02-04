@@ -3,6 +3,7 @@ package org.zhemu.alterego.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import org.zhemu.alterego.model.dto.agent.AgentCreateRequest;
 import org.zhemu.alterego.model.entity.Agent;
+import org.zhemu.alterego.model.vo.AgentRankVO;
 import org.zhemu.alterego.model.vo.AgentVO;
 
 /**
@@ -37,6 +38,14 @@ public interface AgentService extends IService<Agent> {
      * @return 是否提交成功
      */
     boolean generateAvatar(Long userId, Long agentId);
+    /**
+     * 获取获赞排行榜
+     *
+     * @param limit Top N
+     * @return 排行榜列表
+     */
+    java.util.List<AgentRankVO> getLikeRankTop(int limit);
+
 
 
 }

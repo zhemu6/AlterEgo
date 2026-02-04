@@ -14,14 +14,20 @@ import org.zhemu.alterego.mapper.AgentMapper;
 import org.zhemu.alterego.model.dto.agent.AgentAvatarTaskMessage;
 import org.zhemu.alterego.model.dto.agent.AgentCreateRequest;
 import org.zhemu.alterego.model.entity.Agent;
+import org.zhemu.alterego.model.entity.Species;
 import org.zhemu.alterego.model.vo.AgentVO;
+import org.zhemu.alterego.model.vo.AgentRankVO;
 import org.zhemu.alterego.model.vo.SpeciesVO;
 import org.zhemu.alterego.mq.MessageProducer;
 import org.zhemu.alterego.service.AgentService;
+import org.zhemu.alterego.service.RankService;
 import org.zhemu.alterego.service.SpeciesService;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.*;
+import java.util.stream.Collectors;
+
 
 /**
  * @author lushihao
@@ -34,6 +40,7 @@ public class AgentServiceImpl extends ServiceImpl<AgentMapper, Agent>
 
     private final SpeciesService speciesService;
     private final MessageProducer messageProducer;
+    private final RankService rankService;
 
     @Value("${agent.avatar.default-url:}")
     private String defaultAvatarUrl;
@@ -112,5 +119,47 @@ public class AgentServiceImpl extends ServiceImpl<AgentMapper, Agent>
         task.setPersonality(agent.getPersonality());
         messageProducer.sendAgentAvatarTask(task);
         return true;
+    }
+
+    @Override
+    public List<AgentRankVO> getLikeRankTop(int limit) {
+        if (limit <= 0) {
+            return Collections.emptyList();
+        }
+       LinkedHashMap<Long, Integer> rankMap = rankService.getTopAgentLike(limit);
+        if (rankMap.isEmpty()) {
+            return Collections.emptyList();
+        }
+        Set<Long> agentIds = rankMap.keySet();
+        Map<Long, Agent> agentMap = this.listByIds(agentIds).stream()
+                .collect(Collectors.toMap(Agent::getId, agent -> agent));
+        Set<Long> speciesIds = agentMap.values().stream()
+                .map(Agent::getSpeciesId)
+                .collect(Collectors.toSet());
+        Map<Long, Species> speciesMap =
+                speciesService.listByIds(speciesIds).stream()
+                        .collect(Collectors.toMap(
+                                Species::getId, s -> s));
+
+        List<AgentRankVO> result = new ArrayList<>();
+        int rank = 1;
+        for (Map.Entry<Long, Integer> entry : rankMap.entrySet()) {
+            Agent agent = agentMap.get(entry.getKey());
+            if (agent == null) {
+                continue;
+            }
+            AgentRankVO vo = new AgentRankVO();
+            vo.setRank(rank++);
+            vo.setAgentId(agent.getId());
+            vo.setAgentName(agent.getAgentName());
+            vo.setAvatarUrl(agent.getAvatarUrl());
+            Species species = speciesMap.get(agent.getSpeciesId());
+            if (species != null) {
+                vo.setSpecies(SpeciesVO.objToVo(species));
+            }
+            vo.setLikeCount(entry.getValue());
+            result.add(vo);
+        }
+        return result;
     }
 }

@@ -28,4 +28,7 @@ public interface RedisConstants {
     // 4. 接口限流相关
     public static final String RATE_LIMIT_PREFIX = "rate_limit:";
 
+    // 5. 排行榜相关
+    public static final String AGENT_LIKE_RANK_KEY = "rank:agent:like:total";
+
 }
