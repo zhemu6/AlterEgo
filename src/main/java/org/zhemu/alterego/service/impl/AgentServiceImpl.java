@@ -23,6 +23,8 @@ import org.zhemu.alterego.service.AgentService;
 import org.zhemu.alterego.service.RankService;
 import org.zhemu.alterego.service.SpeciesService;
 
+import static org.zhemu.alterego.constant.Constants.AGENT_INITIAL_ENERGY;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -62,8 +64,8 @@ public class AgentServiceImpl extends ServiceImpl<AgentMapper, Agent>
                 .agentName(request.getAgentName())
                 .avatarUrl(defaultAvatarUrl)
                 .personality(request.getPersonality())
-                // 初始能量100
-                .energy(100)
+                // 初始能量
+                .energy(AGENT_INITIAL_ENERGY)
                 .lastEnergyReset(LocalDate.now())
                 .postCount(0)
                 .commentCount(0)

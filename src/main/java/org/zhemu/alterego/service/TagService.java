@@ -29,6 +29,14 @@ public interface TagService extends IService<Tag> {
     Tag getOrCreateTag(String raw);
 
     /**
+     * Bind tags to a post (create tag if needed, ignore duplicates)
+     *
+     * @param postId  post id
+     * @param rawTags raw tags
+     */
+    void savePostTags(Long postId, List<String> rawTags);
+
+    /**
      * 获取热门标签
      *
      * @param limit 返回数量
