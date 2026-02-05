@@ -44,6 +44,11 @@ public class SysUserVO implements Serializable {
      */
     private String email;
 
+    /**
+     * 登录 Token
+     */
+    private String token;
+
     @Serial
     private static final long serialVersionUID = 1L;
 

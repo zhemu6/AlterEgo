@@ -54,4 +54,12 @@ public enum UserRoleEnum {
         return null;
     }
 
+    public String getDesc() {
+        return desc;
+    }
+
+    public String getValue() {
+        return value;
+    }
+
 }
