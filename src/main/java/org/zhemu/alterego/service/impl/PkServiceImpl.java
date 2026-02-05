@@ -1,6 +1,7 @@
 package org.zhemu.alterego.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,14 +16,7 @@ import org.zhemu.alterego.model.dto.pk.AiPkVoteResult;
 import org.zhemu.alterego.model.dto.pk.PkCreateRequest;
 import org.zhemu.alterego.model.dto.pk.PkQueryRequest;
 import org.zhemu.alterego.model.dto.pk.PkVoteRequest;
-import org.zhemu.alterego.model.entity.Agent;
-import org.zhemu.alterego.model.entity.AgentVoteRecord;
-import org.zhemu.alterego.model.entity.Comment;
-import org.zhemu.alterego.model.entity.PkVoteOption;
-import org.zhemu.alterego.model.entity.Post;
-import org.zhemu.alterego.model.entity.PostTag;
-import org.zhemu.alterego.model.entity.Species;
-import org.zhemu.alterego.model.entity.Tag;
+import org.zhemu.alterego.model.entity.*;
 import org.zhemu.alterego.model.vo.PkPostVO;
 import org.zhemu.alterego.model.vo.PkVoteOptionVO;
 import org.zhemu.alterego.model.vo.PostVO;
@@ -34,7 +28,6 @@ import org.zhemu.alterego.service.CommentService;
 import org.zhemu.alterego.service.PkService;
 import org.zhemu.alterego.service.PkVoteOptionService;
 import org.zhemu.alterego.service.PostService;
-import org.zhemu.alterego.service.PostTagService;
 import org.zhemu.alterego.service.SpeciesService;
 import org.zhemu.alterego.service.TagService;
 
@@ -66,7 +59,6 @@ public class PkServiceImpl implements PkService {
     private final AiPkVoteGeneratorService aiPkVoteGeneratorService;
     private final CommentService commentService;
     private final TagService tagService;
-    private final PostTagService postTagService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -83,7 +75,7 @@ public class PkServiceImpl implements PkService {
         // 3. 原子能量检查+扣除（CRITICAL: 修复并发问题）
         boolean energyOk = agentService.lambdaUpdate()
             .eq(Agent::getId, agentId)
-            .ge(Agent::getEnergy, PK_CREATE_ENERGY_COST)  // 原子检查
+            .ge(Agent::getEnergy, PK_CREATE_ENERGY_COST)
             .setSql("energy = energy - " + PK_CREATE_ENERGY_COST + ", post_count = post_count + 1")
             .update();
         ThrowUtils.throwIf(!energyOk, ErrorCode.OPERATION_ERROR, "能量不足或并发冲突（需" + PK_CREATE_ENERGY_COST + " 点）");
@@ -135,7 +127,7 @@ public class PkServiceImpl implements PkService {
         pkVoteOptionService.saveBatch(Arrays.asList(optionA, optionB));
         
         // 8. 保存标签
-        savePostTags(post.getId(), aiResult.tags);
+        tagService.savePostTags(post.getId(), aiResult.tags);
         
         log.info("Agent {} created PK successfully: {}", agentId, post.getId());
         
@@ -222,26 +214,7 @@ public class PkServiceImpl implements PkService {
             .update();
         
         // 12. 保存评论（AI 生成的 reason 作为评论内容）
-        Comment comment = Comment.builder()
-            .postId(postId)
-            .agentId(agentId)
-            .content(aiResult.reason)
-            .parentCommentId(null)  // 顶级评论
-            .rootCommentId(null)    // 将在保存后设置为自己的ID（或由数据库触发器处理）
-            .replyCount(0)
-            .likeCount(0)
-            .dislikeCount(0)
-            .createTime(LocalDateTime.now())
-            .updateTime(LocalDateTime.now())
-            .isDelete(0)
-            .build();
-        commentService.save(comment);
-        
-        // 更新 post.comment_count
-        postService.lambdaUpdate()
-            .eq(Post::getId, postId)
-            .setSql("comment_count = comment_count + 1")
-            .update();
+        commentService.createAgentComment(postId, agentId, aiResult.reason);
         
         log.info("Agent {} voted on PK {}, option: {}", agentId, postId, aiResult.selectedOption);
         
@@ -258,6 +231,23 @@ public class PkServiceImpl implements PkService {
         // 可选过滤：agentId
         if (request.getAgentId() != null) {
             wrapper.eq(Post::getAgentId, request.getAgentId());
+        }
+
+        // 可选过滤：status（基于投票选项状态）
+        String status = request.getStatus();
+        if (status != null && !status.isBlank()) {
+            List<Long> postIds = pkVoteOptionService.lambdaQuery()
+                .select(PkVoteOption::getPostId)
+                .eq(PkVoteOption::getStatus, status)
+                .list()
+                .stream()
+                .map(PkVoteOption::getPostId)
+                .distinct()
+                .collect(Collectors.toList());
+            if (postIds.isEmpty()) {
+                return new Page<>(request.getPageNum(), request.getPageSize(), 0);
+            }
+            wrapper.in(Post::getId, postIds);
         }
         
         // 排序
@@ -322,9 +312,12 @@ public class PkServiceImpl implements PkService {
             .collect(Collectors.toList());
         
         // 5. 查询当前用户 Agent 的投票记录
-        Agent userAgent = agentService.lambdaQuery()
-            .eq(Agent::getUserId, userId)
-            .one();
+        Agent userAgent = null;
+        if (userId != null) {
+            userAgent = agentService.lambdaQuery()
+                .eq(Agent::getUserId, userId)
+                .one();
+        }
         
         Boolean hasVoted = false;
         Long votedOptionId = null;
@@ -356,11 +349,11 @@ public class PkServiceImpl implements PkService {
     
     @Override
     public int closeExpiredPks() {
-        int updated = pkVoteOptionService.lambdaUpdate()
-            .eq(PkVoteOption::getStatus, "active")
+        LambdaUpdateWrapper<PkVoteOption> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(PkVoteOption::getStatus, "active")
             .lt(PkVoteOption::getEndTime, LocalDateTime.now())
-            .set(PkVoteOption::getStatus, "closed")
-            .update() ? 1 : 0;
+            .set(PkVoteOption::getStatus, "closed");
+        int updated = pkVoteOptionService.getBaseMapper().update(null, updateWrapper);
         
         if (updated > 0) {
             log.info("Closed {} expired PKs", updated);
@@ -368,40 +361,4 @@ public class PkServiceImpl implements PkService {
         return updated;
     }
     
-    /**
-     * 标签保存辅助方法（参考 PostServiceImpl）
-     */
-    private void savePostTags(Long postId, List<String> rawTags) {
-        if (rawTags == null || rawTags.isEmpty()) {
-            return;
-        }
-        
-        for (String raw : rawTags) {
-            // 使用 TagService 的 getOrCreateTag 方法
-            Tag tag = tagService.getOrCreateTag(raw);
-            if (tag == null || tag.getId() == null) {
-                continue;
-            }
-            
-            // 创建帖子-标签关联
-            PostTag postTag = PostTag.builder()
-                .postId(postId)
-                .tagId(tag.getId())
-                .createTime(LocalDateTime.now())
-                .build();
-            
-            try {
-                boolean relationSaved = postTagService.save(postTag);
-                if (relationSaved) {
-                    tagService.lambdaUpdate()
-                        .eq(Tag::getId, tag.getId())
-                        .setSql("post_count = post_count + 1")
-                        .update();
-                }
-            } catch (DuplicateKeyException e) {
-                // 忽略重复关联
-                log.debug("Duplicate post-tag relation ignored: postId={}, tagId={}", postId, tag.getId());
-            }
-        }
-    }
 }
