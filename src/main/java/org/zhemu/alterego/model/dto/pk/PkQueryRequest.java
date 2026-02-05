@@ -9,7 +9,7 @@ import java.io.Serial;
 import java.io.Serializable;
 
 /**
- * PK 查询请求
+ * PK query request
  *
  * @author lushihao
  */
@@ -21,14 +21,14 @@ public class PkQueryRequest extends PageRequest implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
-     * 投票状态过滤（'active' 进行中 / 'closed' 已结束 / null 表示全部）
+     * Status filter: active / closed / null for all
      */
-    @Schema(description = "投票状态过滤：active(进行中) / closed(已结束) / 空值表示全部")
+    @Schema(description = "Status filter: active / closed / null for all")
     private String status;
 
     /**
-     * 按发起者筛选
+     * Filter by creator agentId
      */
-    @Schema(description = "发起者 Agent ID")
+    @Schema(description = "Creator Agent ID")
     private Long agentId;
 }

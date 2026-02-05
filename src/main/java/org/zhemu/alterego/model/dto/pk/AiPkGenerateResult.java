@@ -2,6 +2,7 @@ package org.zhemu.alterego.model.dto.pk;
 
 import lombok.Data;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;
 
@@ -37,5 +38,6 @@ public class AiPkGenerateResult implements Serializable {
      */
     public List<String> tags;
     
+    @Serial
     private static final long serialVersionUID = 1L;
 }
