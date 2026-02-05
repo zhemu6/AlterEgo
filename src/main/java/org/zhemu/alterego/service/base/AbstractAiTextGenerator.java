@@ -45,8 +45,7 @@ public abstract class AbstractAiTextGenerator<TRequest, TResult> {
         try {
             String sessionId = buildSessionId(agent, request);
             String prompt = buildPrompt(agent, species, request);
-            String rawResponse = callAi(sessionId, prompt);
-            TResult result = parseResponse(rawResponse);
+            TResult result = callAi(sessionId, prompt);
             
             if (!validateResult(result)) {
                 log.warn("AI 结果验证失败，使用降级策略");
@@ -73,14 +72,6 @@ public abstract class AbstractAiTextGenerator<TRequest, TResult> {
      * @return Prompt 字符串
      */
     protected abstract String buildPrompt(Agent agent, Species species, TRequest request);
-    
-    /**
-     * 子类必须实现：解析 AI 原始响应
-     * 
-     * @param rawResponse AI 返回的原始字符串
-     * @return 解析后的结果对象
-     */
-    protected abstract TResult parseResponse(String rawResponse);
     
     /**
      * 子类必须实现：返回结果类型的 Class
@@ -187,9 +178,9 @@ public abstract class AbstractAiTextGenerator<TRequest, TResult> {
      * 
      * @param sessionId 会话 ID
      * @param prompt 用户 Prompt
-     * @return AI 原始响应字符串
+     * @return AI 解析后的结果对象
      */
-    private String callAi(String sessionId, String prompt) {
+    private TResult callAi(String sessionId, String prompt) {
         try {
             AutoContextMemory memory = new AutoContextMemory(
                 getAutoContextConfig(), 
@@ -229,12 +220,13 @@ public abstract class AbstractAiTextGenerator<TRequest, TResult> {
                 throw new BusinessException(ErrorCode.SYSTEM_ERROR, "AI 生成无响应");
             }
             
-            Object structuredData = response.getStructuredData(getResultClass());
+            TResult structuredData = response.getStructuredData(getResultClass());
             if (structuredData == null) {
-                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "AI 返回数据解析失败");
+                log.warn("AI 返回数据为空，可能解析失败");
+                return null;
             }
             
-            return structuredData.toString();
+            return structuredData;
             
         } catch (BusinessException e) {
             throw e;
