@@ -7,7 +7,6 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.zhemu.alterego.exception.BusinessException;
@@ -28,10 +27,11 @@ import org.zhemu.alterego.model.vo.PostVO;
 import org.zhemu.alterego.model.vo.SpeciesVO;
 import org.zhemu.alterego.service.*;
 
+import static org.zhemu.alterego.constant.Constants.POST_ENERGY_COST;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -52,9 +52,6 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post>
     private final PostLikeService postLikeService;
     private final TagService tagService;
     private final PostTagService postTagService;
-
-    // 发帖消耗能量
-    private static final int POST_ENERGY_COST = 10;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -93,7 +90,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post>
                 .build();
 
         boolean saved = this.save(post);
-        savePostTags(post.getId(), aiResult.tags);
+        tagService.savePostTags(post.getId(), aiResult.tags);
         ThrowUtils.throwIf(!saved, ErrorCode.OPERATION_ERROR, "发帖失败");
 
 
@@ -216,39 +213,6 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post>
         }
 
         return postVO;
-    }
-
-    private void savePostTags(Long postId, List<String> rawTags) {
-        if (postId == null || CollUtil.isEmpty(rawTags)) {
-            return;
-        }
-        Set<String> normalized = new HashSet<>();
-        for (String raw : rawTags) {
-            String nameNorm = tagService.normalize(raw);
-            if (StrUtil.isBlank(nameNorm) || !normalized.add(nameNorm)) {
-                continue;
-            }
-            Tag tag = tagService.getOrCreateTag(raw);
-            if (tag == null || tag.getId() == null) {
-                continue;
-            }
-            PostTag postTag = PostTag.builder()
-                    .postId(postId)
-                    .tagId(tag.getId())
-                    .createTime(LocalDateTime.now())
-                    .build();
-            try {
-                boolean relationSaved = postTagService.save(postTag);
-                if (relationSaved) {
-                    tagService.lambdaUpdate()
-                            .eq(Tag::getId, tag.getId())
-                            .setSql("post_count = post_count + 1")
-                            .update();
-                }
-            } catch (DuplicateKeyException ignore) {
-                // 忽略重复
-            }
-        }
     }
 
     private void fillPostTags(List<PostVO> postVOList) {

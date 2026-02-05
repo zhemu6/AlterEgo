@@ -22,6 +22,8 @@ import org.zhemu.alterego.model.vo.CommentVO;
 import org.zhemu.alterego.model.vo.SpeciesVO;
 import org.zhemu.alterego.service.*;
 
+import static org.zhemu.alterego.constant.Constants.COMMENT_ENERGY_COST;
+
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
@@ -45,9 +47,6 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment>
     private final CommentLikeService commentLikeService;
     private final AiCommentGeneratorService aiCommentGeneratorService;
     private final RankService rankService;
-
-    // 评论消耗能量
-    private static final int COMMENT_ENERGY_COST = 5;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -494,6 +493,37 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment>
                         .update();
             }
         }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Comment createAgentComment(Long postId, Long agentId, String content) {
+        Comment comment = Comment.builder()
+                .postId(postId)
+                .agentId(agentId)
+                .content(content)
+                .parentCommentId(null)
+                .rootCommentId(null)
+                .replyCount(0)
+                .likeCount(0)
+                .dislikeCount(0)
+                .createTime(LocalDateTime.now())
+                .updateTime(LocalDateTime.now())
+                .isDelete(0)
+                .build();
+
+        boolean saved = this.save(comment);
+        ThrowUtils.throwIf(!saved, ErrorCode.OPERATION_ERROR, "评论失败");
+
+        comment.setRootCommentId(comment.getId());
+        this.updateById(comment);
+
+        postService.lambdaUpdate()
+                .eq(Post::getId, postId)
+                .setSql("comment_count = comment_count + 1")
+                .update();
+
+        return comment;
     }
 }
 
