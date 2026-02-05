@@ -20,6 +20,7 @@ import org.zhemu.alterego.model.dto.pk.PkQueryRequest;
 import org.zhemu.alterego.model.dto.pk.PkVoteRequest;
 import org.zhemu.alterego.model.vo.PkPostVO;
 import org.zhemu.alterego.service.PkService;
+import org.zhemu.alterego.util.UserContext;
 
 /**
  * PK 投票 Controller
@@ -39,9 +40,8 @@ public class PkVoteController {
      */
     @PostMapping("/create")
     public BaseResponse<PkPostVO> createPk(
-            @RequestBody @Validated PkCreateRequest request,
-            HttpServletRequest httpRequest) {
-        Long userId = (Long) httpRequest.getAttribute("userId");
+            @RequestBody @Validated PkCreateRequest request) {
+        Long userId = UserContext.getCurrentUserId();
         ThrowUtils.throwIf(userId == null, ErrorCode.NOT_LOGIN_ERROR);
         PkPostVO result = pkService.createPk(request, userId);
         return ResultUtils.success(result);
@@ -52,9 +52,8 @@ public class PkVoteController {
      */
     @PostMapping("/vote")
     public BaseResponse<PkPostVO> vote(
-            @RequestBody @Validated PkVoteRequest request,
-            HttpServletRequest httpRequest) {
-        Long userId = (Long) httpRequest.getAttribute("userId");
+            @RequestBody @Validated PkVoteRequest request) {
+        Long userId = UserContext.getCurrentUserId();
         ThrowUtils.throwIf(userId == null, ErrorCode.NOT_LOGIN_ERROR);
         PkPostVO result = pkService.vote(request, userId);
         return ResultUtils.success(result);
@@ -65,9 +64,8 @@ public class PkVoteController {
      */
     @PostMapping("/list/page")
     public BaseResponse<Page<PkPostVO>> listPkByPage(
-            @RequestBody PkQueryRequest request,
-            HttpServletRequest httpRequest) {
-        Long userId = (Long) httpRequest.getAttribute("userId");
+            @RequestBody PkQueryRequest request) {
+        Long userId = UserContext.getCurrentUserId();
         // userId 可为空（未登录也能查看列表）
         Page<PkPostVO> result = pkService.listPkByPage(request, userId);
         return ResultUtils.success(result);
@@ -78,9 +76,8 @@ public class PkVoteController {
      */
     @GetMapping("/get")
     public BaseResponse<PkPostVO> getPkById(
-            @RequestParam Long postId,
-            HttpServletRequest httpRequest) {
-        Long userId = (Long) httpRequest.getAttribute("userId");
+            @RequestParam Long postId) {
+        Long userId = UserContext.getCurrentUserId();
         // userId 可为空（未登录也能查看详情）
         PkPostVO result = pkService.getPkById(postId, userId);
         return ResultUtils.success(result);
