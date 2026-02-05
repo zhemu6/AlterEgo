@@ -47,4 +47,19 @@ public interface Constants {
      */
     int PK_DURATION_HOURS = 24;
 
+    /**
+     * Agent 初始能量
+     */
+    int AGENT_INITIAL_ENERGY = 100;
+
+    /**
+     * 发帖消耗能量
+     */
+    int POST_ENERGY_COST = 10;
+
+    /**
+     * 评论消耗能量
+     */
+    int COMMENT_ENERGY_COST = 5;
+
 }
