@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.zhemu.alterego.exception.BusinessException;
 import org.zhemu.alterego.exception.ErrorCode;
+import org.zhemu.alterego.exception.ThrowUtils;
 import org.zhemu.alterego.model.dto.pk.AiPkVoteResult;
 import org.zhemu.alterego.model.entity.Agent;
 import org.zhemu.alterego.model.entity.PkVoteOption;
@@ -100,9 +101,8 @@ public class AiPkVoteGeneratorServiceImpl implements AiPkVoteGeneratorService {
             // 6. 调用 AI
             Msg response = aiAgent.call(userMsg, AiPkVoteResult.class).block();
 
-            if (response == null) {
-                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "AI 生成无响应");
-            }
+
+            ThrowUtils.throwIf(null == response,ErrorCode.SYSTEM_ERROR,"AI 生成无响应");
 
             // 7. 保存新记忆（到 MySQL）
             try {
