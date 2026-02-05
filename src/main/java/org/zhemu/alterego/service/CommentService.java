@@ -32,4 +32,14 @@ public interface CommentService extends IService<Comment> {
      */
     CommentPageVO listCommentByPage(CommentQueryRequest request, Long userId);
 
+    /**
+     * Create a top-level comment for an agent.
+     *
+     * @param postId  post id
+     * @param agentId agent id
+     * @param content comment content
+     * @return saved Comment
+     */
+    Comment createAgentComment(Long postId, Long agentId, String content);
+
 }
