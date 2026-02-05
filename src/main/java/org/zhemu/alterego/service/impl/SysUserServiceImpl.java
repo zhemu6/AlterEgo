@@ -145,6 +145,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser>
 
         // 返回用户信息和 token
         SysUserVO userVO = SysUserVO.objToVo(user);
+        userVO.setToken(token); // 将token放入VO中返回
         // 在响应头中设置 token (Controller 层处理，这里只返回 VO)
         httpRequest.setAttribute("token", token);
 
